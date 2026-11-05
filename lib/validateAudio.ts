@@ -1,4 +1,4 @@
-import { ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_BYTES } from "@/lib/constants";
+import { ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_MIME_TYPES } from "@/lib/constants";
 
 export function getExtension(filename: string): string {
   const lower = filename.toLowerCase();
@@ -21,6 +21,8 @@ export function hasAllowedAudioFormat(filename: string, mimeType: string): boole
   return false;
 }
 
-export function isAudioSizeAllowed(sizeBytes: number): boolean {
-  return sizeBytes > 0 && sizeBytes <= MAX_AUDIO_BYTES;
+// maxBytes is caller-supplied (upload vs. recording have different caps in v3) rather than a
+// single module-level constant, so one check serves both without implying they share a limit.
+export function isAudioSizeAllowed(sizeBytes: number, maxBytes: number): boolean {
+  return sizeBytes > 0 && sizeBytes <= maxBytes;
 }

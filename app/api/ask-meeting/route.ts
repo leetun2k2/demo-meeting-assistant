@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { answerMeetingQuestion, GeminiError } from "@/lib/meeting/gemini";
 import type { TranscriptSegment } from "@/lib/types";
+import { SUMMARY_TEXT_CHAR_LIMIT } from "@/lib/constants";
+import { isWithinSummaryTextLimit } from "@/lib/meeting/textLimit";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -11,10 +13,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Provide a question of up to 2,000 characters." }, { status: 400 });
   }
   const segments: unknown = body.transcript;
-  if (!Array.isArray(segments) || !segments.length || segments.length > 5000 || !segments.every((s): s is TranscriptSegment =>
+  const isValidSegments = Array.isArray(segments) && segments.length > 0 && segments.every((s): s is TranscriptSegment =>
     !!s && typeof s.speaker === "string" && typeof s.text === "string" && typeof s.startMs === "number" && Number.isFinite(s.startMs) && s.startMs >= 0
-  ) || JSON.stringify(segments).length > 200000) {
-    return NextResponse.json({ error: "Provide a valid meeting transcript (up to 200,000 characters)." }, { status: 400 });
+  );
+  if (!isValidSegments) {
+    return NextResponse.json({ error: "Provide a valid meeting transcript." }, { status: 400 });
+  }
+  if (!isWithinSummaryTextLimit(segments as TranscriptSegment[])) {
+    return NextResponse.json(
+      { error: `This transcript is too large to ask about in this demo (over ${SUMMARY_TEXT_CHAR_LIMIT.toLocaleString()} characters).` },
+      { status: 400 },
+    );
   }
   try {
     const answer = await answerMeetingQuestion(body.geminiApiKey, segments, body.question.trim());

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { MeetingErrorResponse, SummaryRetryResult, TranscriptSegment } from "@/lib/types";
 import { summarizeOrFail } from "@/lib/meeting/gemini";
-import { SUMMARY_BUDGET_MS } from "@/lib/constants";
+import { SUMMARY_BUDGET_MS, SUMMARY_TEXT_CHAR_LIMIT } from "@/lib/constants";
+import { isWithinSummaryTextLimit } from "@/lib/meeting/textLimit";
 
 // Retries only the Gemini 3.5 Flash-Lite summarization step against a transcript the client
 // already holds from a prior process-meeting attempt — no audio upload, no Transcribe call.
@@ -40,9 +41,25 @@ export async function POST(request: NextRequest) {
   if (!Array.isArray(transcript) || transcript.length === 0 || !transcript.every(isValidSegment)) {
     return errorResponse("A nonempty, valid transcript is required.", 400);
   }
+  if (!isWithinSummaryTextLimit(transcript as TranscriptSegment[])) {
+    return errorResponse(
+      `This transcript is too large to summarize in this demo (over ${SUMMARY_TEXT_CHAR_LIMIT.toLocaleString()} characters). The transcript itself remains available.`,
+      400,
+    );
+  }
 
-  const deadline = Date.now() + SUMMARY_BUDGET_MS;
+  const startedAt = Date.now();
+  const deadline = startedAt + SUMMARY_BUDGET_MS;
   const result = await summarizeOrFail(geminiApiKey, transcript as TranscriptSegment[], deadline);
+
+  // Demo evaluation metrics only (PRD v3 FR-07): counts and stage duration, never the API key
+  // or transcript/summary text.
+  console.log("summarize-meeting metrics:", {
+    transcriptChars: JSON.stringify(transcript).length,
+    segmentCount: transcript.length,
+    summaryMs: Date.now() - startedAt,
+    status: result.status,
+  });
 
   const response: SummaryRetryResult = {
     status: result.status,

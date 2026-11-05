@@ -51,6 +51,17 @@ body {
   animation: aurora-pulse 10s ease-in-out infinite alternate;
 }
 
+/* Indeterminate "still working" activity bar: used where there is no real percent-complete
+   signal to report (PRD v3 FR-02 forbids fabricating one). */
+@keyframes indeterminate-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+.animate-indeterminate {
+  animation: indeterminate-bar 1.4s ease-in-out infinite;
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

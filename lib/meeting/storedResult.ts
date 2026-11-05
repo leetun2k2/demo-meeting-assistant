@@ -16,7 +16,7 @@ function isInsight(value: unknown): boolean {
 
 // Version 3 excludes legacy demo caches. Validate rendered fields before restoring them.
 export function isStoredMeetingResult(value: unknown): value is MeetingResult {
-  if (!isRecord(value) || value.schemaVersion !== 3 || !["completed", "summary_failed", "no_speech"].includes(String(value.status))) return false;
+  if (!isRecord(value) || value.schemaVersion !== 3 || !["transcribed", "completed", "summary_failed", "no_speech"].includes(String(value.status))) return false;
   if (!isList(value.transcript, (s) => isRecord(s) && isText(s.speaker) && isText(s.text) && isMs(s.startMs) && (s.endMs === undefined || isMs(s.endMs)))) return false;
   if (value.processedAt !== undefined && (!isText(value.processedAt) || !Number.isFinite(Date.parse(value.processedAt)))) return false;
   if (value.audioDurationMs !== undefined && !isMs(value.audioDurationMs)) return false;

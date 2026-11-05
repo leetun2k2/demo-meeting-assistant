@@ -10,18 +10,15 @@ import {
   transcribeAudio,
   uploadAudio,
 } from "@/lib/meeting/geminiTranscribe";
-import { summarizeOrFail } from "@/lib/meeting/gemini";
-import { SUMMARY_BUDGET_MS } from "@/lib/constants";
+import { CLEANUP_BUDGET_MS, MAX_UPLOAD_BYTES, PROCESS_BUDGET_MS } from "@/lib/constants";
 
-// A single long request matches the accepted local-demo scope: the Gemini Files upload and
-// one foreground Transcribe Interactions call happen inside this handler, nothing is
-// persisted, and there is no queue/worker/webhook. A failed summary can be retried afterward
-// without repeating this part — see /api/summarize-meeting.
+// Per v3 Technical Design, this route now only covers the Gemini Files upload and one
+// foreground Transcribe Interactions call: it returns as soon as the transcript is ready
+// (status "transcribed", summary: null) instead of also summarizing. Summarization is a
+// separate, sequential call the browser makes to /api/summarize-meeting once it holds the
+// transcript, so a summary failure never requires re-uploading or re-transcribing audio.
 // (No route segment config is set: `cacheComponents` in next.config.ts already makes
 // this handler dynamic/uncached by default, and that option rejects `runtime`/`dynamic`.)
-
-const TRANSCRIPTION_BUDGET_MS = 180_000; // Gemini Files upload + Transcribe inference
-const CLEANUP_BUDGET_MS = 10_000;
 
 function errorResponse(message: string, status: number, warnings?: string[]): NextResponse<MeetingErrorResponse> {
   return NextResponse.json(
@@ -35,6 +32,13 @@ function resultResponse(result: MeetingResult): NextResponse<MeetingResult> {
 }
 
 export async function POST(request: NextRequest) {
+  // Cheap early rejection when the client reports its size up front, so an obviously
+  // oversized body does not have to be buffered into FormData just to be rejected anyway.
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_UPLOAD_BYTES) {
+    return errorResponse("Audio exceeds the 100 MiB limit.", 413);
+  }
+
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -51,8 +55,8 @@ export async function POST(request: NextRequest) {
   if (typeof geminiApiKeyField !== "string" || !geminiApiKeyField.trim()) {
     return errorResponse("A Gemini API key is required.", 400);
   }
-  if (!isAudioSizeAllowed(audio.size)) {
-    return errorResponse("Audio exceeds the 20 MiB limit.", 400);
+  if (!isAudioSizeAllowed(audio.size, MAX_UPLOAD_BYTES)) {
+    return errorResponse("Audio exceeds the 100 MiB limit.", 413);
   }
   if (!hasAllowedAudioFormat(audio.name || "", audio.type || "")) {
     return errorResponse("Unsupported audio format. Use MP3, WAV, M4A or WebM.", 400);
@@ -60,6 +64,7 @@ export async function POST(request: NextRequest) {
 
   const geminiApiKey: string = geminiApiKeyField;
   const warnings: string[] = [];
+  const startedAt = Date.now();
 
   // Tracks the one Gemini Files resource owned by this attempt. Cleared once cleanup has
   // been attempted so the `finally` fallback below cannot double-delete.
@@ -74,12 +79,13 @@ export async function POST(request: NextRequest) {
     if (!cleanedUp) warnings.push("Could not confirm cleanup of the temporary Gemini audio file.");
   }
 
+  const canonicalMimeType = canonicalizeAudioMimeType(audio.name || "", audio.type || "");
+
   try {
-    const transcriptionDeadline = Date.now() + TRANSCRIPTION_BUDGET_MS;
+    const transcriptionDeadline = Date.now() + PROCESS_BUDGET_MS;
 
     let annotations;
     try {
-      const canonicalMimeType = canonicalizeAudioMimeType(audio.name || "", audio.type || "");
       const uploaded = await uploadAudio(geminiApiKey, audio, canonicalMimeType, transcriptionDeadline);
       fileName = uploaded.name;
       annotations = await transcribeAudio(geminiApiKey, uploaded.uri, transcriptionDeadline);
@@ -90,7 +96,7 @@ export async function POST(request: NextRequest) {
         // job whose non-terminal state would make that deletion unsafe.
         return errorResponse(
           `Transcription failed: ${err.message}`,
-          502,
+          504,
           ["Gemini did not finish in time; the uploaded audio file may remain until cleanup or its 48-hour expiry."],
         );
       }
@@ -110,6 +116,15 @@ export async function POST(request: NextRequest) {
       return errorResponse(`Transcription failed: ${message}`, 502, warnings.length ? warnings : undefined);
     }
 
+    // Demo evaluation metrics only (PRD v3 FR-07): byte/segment counts and stage duration.
+    // Never the API key, audio bytes, or transcript text.
+    console.log("process-meeting metrics:", {
+      audioBytes: audio.size,
+      format: canonicalMimeType,
+      uploadAndTranscribeMs: Date.now() - startedAt,
+      segmentCount: segments.length,
+    });
+
     if (segments.length === 0) {
       return resultResponse({
         status: "no_speech",
@@ -119,13 +134,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const summaryDeadline = Date.now() + SUMMARY_BUDGET_MS;
-    const summaryResult = await summarizeOrFail(geminiApiKey, segments, summaryDeadline);
     return resultResponse({
-      status: summaryResult.status,
+      status: "transcribed",
       transcript: segments,
-      summary: summaryResult.summary,
-      ...(summaryResult.summaryError ? { summaryError: summaryResult.summaryError } : {}),
+      summary: null,
       ...(warnings.length ? { warnings } : {}),
     });
   } catch (err) {

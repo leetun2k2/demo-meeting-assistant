@@ -1,4 +1,7 @@
-export type MeetingStatus = "completed" | "summary_failed" | "no_speech";
+// "transcribed" is an intermediate state (PRD v3 FR-05/Technical Design): the transcript is
+// complete and held, but no summary attempt has produced a result yet. It is distinct from
+// "summary_failed", which means a summary attempt was made and failed.
+export type MeetingStatus = "transcribed" | "completed" | "summary_failed" | "no_speech";
 
 export interface TranscriptSegment {
   speaker: string;

@@ -9,10 +9,15 @@ import type {
   SummaryRetryResult,
 } from "@/lib/types";
 import { displaySpeaker, normalizeSpeakerMentions } from "@/lib/meeting/display";
-import { downloadTextFile, slugForFilename, toSummaryText } from "@/lib/meeting/export";
+import { downloadTextFile, slugForFilename, toMarkdown, toSummaryText } from "@/lib/meeting/export";
 import { formatClock } from "@/lib/format";
-import { GEMINI_API_KEY_STORAGE_KEY } from "@/lib/constants";
+import { GEMINI_API_KEY_STORAGE_KEY, SUMMARY_BUDGET_MS, SUMMARY_TEXT_CHAR_LIMIT } from "@/lib/constants";
 import { readStoredValue } from "@/lib/storage";
+import { isWithinSummaryTextLimit } from "@/lib/meeting/textLimit";
+
+// Keeps a single page of segments rendered at a time for a long transcript, per PRD v3 FR-06.
+// Search/filter still run over the full transcript before this slice is taken.
+const TRANSCRIPT_PAGE_SIZE = 100;
 
 
 // --- SVG Icons ---
@@ -230,6 +235,7 @@ export default function OutputPage({
   const [speakerFilter, setSpeakerFilter] = useState("all");
   const [importantOnly, setImportantOnly] = useState(false);
   const [starredIndices, setStarredIndices] = useState<Set<number>>(new Set());
+  const [transcriptPage, setTranscriptPage] = useState(1);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
 
@@ -281,7 +287,8 @@ export default function OutputPage({
     }));
   }, [transcript, hasTiming, summary]);
 
-  // Filtered transcript
+  // Filtered transcript — search/filter run over the full array (not a page of it), per
+  // PRD v3 FR-06; pagination below only slices this already-filtered result for render.
   const filteredTranscript = useMemo(() => {
     const q = transcriptQuery.trim().toLowerCase();
     return transcript
@@ -294,6 +301,23 @@ export default function OutputPage({
       });
   }, [transcript, transcriptQuery, speakerFilter, importantOnly, starredIndices]);
 
+  // Reset to page 1 whenever the query/filter changes so the page shown always matches what's
+  // actually being filtered (PRD v3 Technical Design). Adjusted during render rather than in
+  // an effect, per React's guidance for state that depends on a changed value.
+  const transcriptFilterKey = `${transcriptQuery} ${speakerFilter} ${importantOnly}`;
+  const [lastTranscriptFilterKey, setLastTranscriptFilterKey] = useState(transcriptFilterKey);
+  if (transcriptFilterKey !== lastTranscriptFilterKey) {
+    setLastTranscriptFilterKey(transcriptFilterKey);
+    setTranscriptPage(1);
+  }
+
+  const transcriptPageCount = Math.max(1, Math.ceil(filteredTranscript.length / TRANSCRIPT_PAGE_SIZE));
+  const clampedTranscriptPage = Math.min(transcriptPage, transcriptPageCount);
+  const paginatedTranscript = useMemo(
+    () => filteredTranscript.slice((clampedTranscriptPage - 1) * TRANSCRIPT_PAGE_SIZE, clampedTranscriptPage * TRANSCRIPT_PAGE_SIZE),
+    [filteredTranscript, clampedTranscriptPage],
+  );
+
   function toggleStar(idx: number) {
     setStarredIndices((prev) => {
       const next = new Set(prev);
@@ -303,16 +327,41 @@ export default function OutputPage({
     });
   }
 
+  // Jumps to a transcript segment by its original index, even when it's on another page or
+  // currently hidden by a search/speaker/starred filter (PRD v3 FR-06: "jump mở đúng trang,
+  // xóa filter nếu nó che đoạn đích").
   function jumpToSegment(idx: number) {
     const seg = transcript[idx];
-    if (audioAvailable && audioRef.current && seg) {
+    if (!seg) return;
+
+    const q = transcriptQuery.trim().toLowerCase();
+    const hiddenByFilter =
+      (speakerFilter !== "all" && seg.speaker !== speakerFilter) ||
+      (importantOnly && !starredIndices.has(idx)) ||
+      (q !== "" && !seg.text.toLowerCase().includes(q));
+
+    if (hiddenByFilter) {
+      setSpeakerFilter("all");
+      setImportantOnly(false);
+      setTranscriptQuery("");
+    }
+
+    // When filters are being cleared, the segment's position in the (now unfiltered) list is
+    // just its own index, since the unfiltered list preserves transcript order.
+    const position = hiddenByFilter ? idx : filteredTranscript.findIndex((f) => f.idx === idx);
+    const page = Math.max(1, Math.ceil((position + 1) / TRANSCRIPT_PAGE_SIZE));
+    setTranscriptPage(page);
+
+    if (audioAvailable && audioRef.current) {
       audioRef.current.currentTime = seg.startMs / 1000;
       audioRef.current.play().then(() => setIsPlayingAudio(true)).catch(() => showToast("Audio playback unavailable."));
     }
-    const el = document.getElementById(`seg-${idx}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+
+    // Two animation frames give React time to apply the filter/page state change and render
+    // the target segment before scrolling to it.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById(`seg-${idx}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }));
   }
 
   function toggleAudioPlayback() {
@@ -352,6 +401,10 @@ export default function OutputPage({
   }
 
   async function handleRetrySummary() {
+    if (!isWithinSummaryTextLimit(transcript)) {
+      showToast(`This transcript is over the ${SUMMARY_TEXT_CHAR_LIMIT.toLocaleString()}-character limit supported for summarization in this demo.`);
+      return;
+    }
     const apiKey = readStoredValue(GEMINI_API_KEY_STORAGE_KEY);
     if (!apiKey) {
       showToast("Add your Gemini API key on the home page first.");
@@ -363,6 +416,7 @@ export default function OutputPage({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript, geminiApiKey: apiKey }),
+        signal: AbortSignal.timeout(SUMMARY_BUDGET_MS),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -371,8 +425,8 @@ export default function OutputPage({
       }
       onSummaryUpdate(data as SummaryRetryResult);
       showToast(data.status === "completed" ? "Summary regenerated!" : data.summaryError || "Summary could not be generated. Please retry.");
-    } catch {
-      showToast("Could not regenerate summary.");
+    } catch (error) {
+      showToast(error instanceof DOMException && error.name === "TimeoutError" ? "Summarization did not finish within the time budget." : "Could not regenerate summary.");
     } finally {
       setRetryingSummary(false);
     }
@@ -382,6 +436,10 @@ export default function OutputPage({
   async function handleAskAi(e: React.FormEvent) {
     e.preventDefault();
     if (!aiQuestion.trim() || askingAi) return;
+    if (!isWithinSummaryTextLimit(transcript)) {
+      showToast(`This transcript is over the ${SUMMARY_TEXT_CHAR_LIMIT.toLocaleString()}-character limit supported for Ask AI in this demo.`);
+      return;
+    }
     const apiKey = readStoredValue(GEMINI_API_KEY_STORAGE_KEY);
     if (!apiKey) { showToast("Add your Gemini API key on the home page first."); return; }
     setAskingAi(true);
@@ -407,13 +465,30 @@ export default function OutputPage({
     window.setTimeout(() => jumpToSegment(idx), 0);
   }
 
-  const jsonStr = useMemo(() => JSON.stringify(result, null, 2), [result]);
+  // Only serialized when the Raw JSON tab is actually open, and on demand for Export JSON,
+  // rather than on every render/result change — a long transcript makes this a real cost
+  // (PRD v3 Technical Design: "chỉ serialize khi mở/download").
+  const jsonStr = useMemo(() => (activeTab === "json" ? JSON.stringify(result, null, 2) : null), [activeTab, result]);
+  const buildJsonForExport = () => JSON.stringify(result, null, 2);
   const filenameBase = summary ? slugForFilename(summary.title) : "meeting";
+  const transcriptCharCount = useMemo(() => JSON.stringify(transcript).length, [transcript]);
+  const overSummaryLimit = !isWithinSummaryTextLimit(transcript);
 
   // Data helpers
   const meetingTitle = summary?.title || "Meeting Results";
-  const heroHeading = summary?.title || (result.status === "no_speech" ? "No speech detected" : "Summary unavailable");
-  const execSummary = summary?.executiveSummary || result.summaryError || "Upload or record another audio file to try again.";
+  const heroHeading =
+    summary?.title ||
+    (result.status === "no_speech"
+      ? "No speech detected"
+      : result.status === "transcribed"
+      ? "Transcript ready — summary pending"
+      : "Summary unavailable");
+  const execSummary =
+    summary?.executiveSummary ||
+    result.summaryError ||
+    (result.status === "transcribed"
+      ? "The transcript is ready. Generate a summary to see the executive summary, decisions and action items."
+      : "Upload or record another audio file to try again.");
   const decisionsCount = summary?.decisions.length ?? 0;
   const actionItemsCount = summary?.actionItems.length ?? 0;
   const completedItemsCount = (summary?.actionItems || []).filter((i) => i.status === "done" || i.status === "Done").length;
@@ -543,20 +618,31 @@ export default function OutputPage({
                   <p className="mt-2.5 text-xs sm:text-sm text-zinc-600 leading-relaxed font-normal">
                     {execSummary}
                   </p>
+                  {overSummaryLimit && (
+                    <p className="mt-2 text-[11px] font-semibold text-amber-700">
+                      This transcript is {transcriptCharCount.toLocaleString()} characters, over the {SUMMARY_TEXT_CHAR_LIMIT.toLocaleString()}-character limit supported for summarization and Ask AI in this demo. The transcript itself remains viewable and exportable.
+                    </p>
+                  )}
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-indigo-50 flex items-center justify-between text-xs text-indigo-700 font-semibold">
                   <span className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    {summary ? "AI-generated analysis" : "Analysis unavailable"}
+                    {summary ? "AI-generated analysis" : result.status === "transcribed" ? "Summary not yet generated" : "Analysis unavailable"}
                   </span>
                   <button
                     type="button"
                     onClick={handleRetrySummary}
-                    disabled={retryingSummary || transcript.length === 0}
-                    className="hover:underline text-[11px] text-zinc-500 hover:text-indigo-600"
+                    disabled={retryingSummary || transcript.length === 0 || overSummaryLimit}
+                    className="hover:underline text-[11px] text-zinc-500 hover:text-indigo-600 disabled:no-underline disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {retryingSummary ? "Generating…" : "Refresh"}
+                    {retryingSummary
+                      ? "Generating…"
+                      : result.status === "transcribed"
+                      ? "Generate Summary"
+                      : result.status === "completed"
+                      ? "Refresh"
+                      : "Retry Summary"}
                   </button>
                 </div>
               </div>
@@ -709,7 +795,7 @@ export default function OutputPage({
                   <button
                     type="button"
                     onClick={() => {
-                      void copyText(jsonStr, "JSON copied to clipboard");
+                      void copyText(jsonStr ?? "", "JSON copied to clipboard");
                     }}
                     className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
                   >
@@ -717,7 +803,7 @@ export default function OutputPage({
                   </button>
                 </div>
                 <pre className="mt-3 max-h-[500px] overflow-auto rounded-xl bg-zinc-900 p-4 text-xs font-mono text-zinc-100 leading-relaxed">
-                  {jsonStr}
+                  {jsonStr ?? ""}
                 </pre>
               </div>
             )}
@@ -992,8 +1078,12 @@ export default function OutputPage({
                   </div>
                 </div>
 
+                {filteredTranscript.length === 0 && (
+                  <p className="mt-4 text-xs text-zinc-500">No segments match the current search/filter.</p>
+                )}
+
                 <div className="space-y-3 mt-4">
-                  {filteredTranscript.map(({ seg, idx }) => {
+                  {paginatedTranscript.map(({ seg, idx }) => {
                     const isStarred = starredIndices.has(idx);
                     const speakerColor =
                       idx % 3 === 0
@@ -1046,6 +1136,30 @@ export default function OutputPage({
                     );
                   })}
                 </div>
+
+                {transcriptPageCount > 1 && (
+                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-3 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setTranscriptPage((p) => Math.max(1, p - 1))}
+                      disabled={clampedTranscriptPage <= 1}
+                      className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      ← Previous
+                    </button>
+                    <span className="font-medium text-zinc-500">
+                      Page {clampedTranscriptPage} of {transcriptPageCount} · {filteredTranscript.length} segment{filteredTranscript.length === 1 ? "" : "s"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTranscriptPage((p) => Math.min(transcriptPageCount, p + 1))}
+                      disabled={clampedTranscriptPage >= transcriptPageCount}
+                      className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1084,8 +1198,10 @@ export default function OutputPage({
 
                 <button
                   type="button"
-                  disabled={!transcript.length} onClick={() => setShowAskAiModal(true)}
-                  className="flex w-full items-center gap-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 px-3.5 py-2.5 hover:bg-indigo-100/70 text-indigo-800 transition-all text-left font-bold"
+                  disabled={!transcript.length || overSummaryLimit}
+                  title={overSummaryLimit ? `Transcript exceeds the ${SUMMARY_TEXT_CHAR_LIMIT.toLocaleString()}-character limit for Ask AI.` : undefined}
+                  onClick={() => setShowAskAiModal(true)}
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 px-3.5 py-2.5 hover:bg-indigo-100/70 text-indigo-800 transition-all text-left font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <IconSparkles className="w-4 h-4 text-indigo-600" />
                   <span>Ask AI Assistant</span>
@@ -1093,11 +1209,20 @@ export default function OutputPage({
 
                 <button
                   type="button"
-                  onClick={() => downloadTextFile(`${filenameBase}.json`, "application/json", jsonStr)}
+                  onClick={() => downloadTextFile(`${filenameBase}.json`, "application/json", buildJsonForExport())}
                   className="flex w-full items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 hover:bg-zinc-50 transition-colors text-left font-medium text-zinc-600"
                 >
                   <IconCode className="w-4 h-4 text-zinc-400" />
                   <span>Export JSON</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => downloadTextFile(`${filenameBase}.md`, "text/markdown", toMarkdown(result))}
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 hover:bg-zinc-50 transition-colors text-left font-medium text-zinc-600"
+                >
+                  <IconDocumentText className="w-4 h-4 text-zinc-400" />
+                  <span>Export Markdown</span>
                 </button>
               </div>
             </div>

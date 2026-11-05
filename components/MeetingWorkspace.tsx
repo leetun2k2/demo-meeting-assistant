@@ -4,13 +4,18 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  DURATION_WARNING_MS,
   GEMINI_API_KEY_STORAGE_KEY,
   KEYS_HELPER_TEXT,
   LAST_RESULT_STORAGE_KEY,
-  MAX_AUDIO_BYTES,
+  MAX_RECORDING_BYTES,
   MAX_RECORDING_MS,
+  MAX_UPLOAD_BYTES,
+  PROCESS_BUDGET_MS,
   SONIOX_API_KEY_STORAGE_KEY,
+  SUMMARY_BUDGET_MS,
   SWITCH_INPUT_NOTICE,
+  TOTAL_BUDGET_MS,
   UPLOAD_HELPER_TEXT,
 } from "@/lib/constants";
 import { formatBytes, formatClock } from "@/lib/format";
@@ -18,17 +23,47 @@ import { probeStorageAvailable, readStoredValue, removeStoredValue, writeStoredV
 import { hasAllowedAudioFormat, isAudioSizeAllowed } from "@/lib/validateAudio";
 import { isStoredMeetingResult } from "@/lib/meeting/storedResult";
 import { setSessionAudio } from "@/lib/meeting/audioSession";
-import type { MeetingErrorResponse, MeetingResult } from "@/lib/types";
+import { setSessionResult } from "@/lib/meeting/resultSession";
+import type { MeetingErrorResponse, MeetingResult, SummaryRetryResult } from "@/lib/types";
 
 type InputMode = "record" | "upload";
 type RecordingState = "idle" | "acquiring" | "recording" | "finalizing" | "stopped";
 type StopReason = "manual" | "limit" | "discard";
+type ProcessStage = "uploading" | "summarizing";
 
 interface AudioInput {
   blob: Blob;
   filename: string;
   sizeBytes: number;
+  // null when metadata could not be read within the bounded probe (PRD v3 FR-01: never block
+  // the UI indefinitely on metadata reads, and never fabricate a duration).
+  durationMs: number | null;
   source: InputMode;
+}
+
+// Reads duration from container metadata only (no full decode/waveform), bounded so a
+// malformed or exotic file can never hang file selection (PRD v3 FR-01).
+function probeAudioDuration(blob: Blob, timeoutMs = 4000): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const el = document.createElement("audio");
+    let settled = false;
+    const timer = window.setTimeout(() => finish(null), timeoutMs);
+    function finish(value: number | null) {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      URL.revokeObjectURL(url);
+      resolve(value);
+    }
+    el.preload = "metadata";
+    el.onloadedmetadata = () => {
+      const ms = el.duration * 1000;
+      finish(Number.isFinite(ms) && ms > 0 ? ms : null);
+    };
+    el.onerror = () => finish(null);
+    el.src = url;
+  });
 }
 
 const STORAGE_UNAVAILABLE_MESSAGE = "Your API key could not be saved in this browser.";
@@ -77,10 +112,12 @@ export default function MeetingWorkspace() {
   const mountedRef = useRef(true);
 
   // --- Processing ------------------------------------------------------------
-  const [processing, setProcessing] = useState(false);
+  const [processStage, setProcessStage] = useState<ProcessStage | null>(null);
+  const processing = processStage !== null;
   const [processError, setProcessError] = useState<string | null>(null);
   const attemptIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const audioInputTokenRef = useRef(0);
 
   // --- Lifecycle ---------------------------------------------------------------
   useEffect(() => {
@@ -138,26 +175,9 @@ export default function MeetingWorkspace() {
 
   const processingElapsedMs = processingStartRef.current ? Date.now() - processingStartRef.current : 0;
 
-  const estimatedDurationSec = useMemo(() => {
-    if (!audio) return 40;
-    const sizeMb = audio.sizeBytes / (1024 * 1024);
-    const estimated = Math.round(15 + sizeMb * 2.5);
-    return Math.max(20, Math.min(120, estimated));
-  }, [audio]);
-
-  const elapsedSeconds = Math.floor(processingElapsedMs / 1000);
-  const remainingSeconds = Math.max(0, estimatedDurationSec - elapsedSeconds);
-  const progressPercent = Math.min(95, Math.round((elapsedSeconds / estimatedDurationSec) * 90));
-
-  const currentStage = useMemo(() => {
-    if (elapsedSeconds < 8) {
-      return { step: 1, title: "Uploading audio to Gemini…", desc: "Connecting and streaming audio to Gemini Files API" };
-    } else if (elapsedSeconds < estimatedDurationSec * 0.7) {
-      return { step: 2, title: "Transcribing speech & identifying speakers…", desc: "Gemini 3.5 Transcribe analyzing acoustic patterns & diarization" };
-    } else {
-      return { step: 3, title: "Extracting meeting intelligence…", desc: "Synthesizing executive summary, decisions, and action items" };
-    }
-  }, [elapsedSeconds, estimatedDurationSec]);
+  // No fabricated percentage/ETA (PRD v3 FR-02): only the two real request stages and real
+  // elapsed time are shown, driven by processStage, not a time-based guess.
+  const durationOverLimit = !!audio?.durationMs && audio.durationMs > DURATION_WARNING_MS;
 
   const hasGeminiKey = geminiKey.trim() !== "";
   const isRecordingBusy = recordingState === "acquiring" || recordingState === "recording" || recordingState === "finalizing";
@@ -235,7 +255,7 @@ export default function MeetingWorkspace() {
       if (event.data && event.data.size > 0) {
         chunksRef.current.push(event.data);
         bytesRef.current += event.data.size;
-        if (bytesRef.current > MAX_AUDIO_BYTES && recorder.state === "recording") {
+        if (bytesRef.current > MAX_RECORDING_BYTES && recorder.state === "recording") {
           stopRecordingInternal("discard");
         }
       }
@@ -288,7 +308,7 @@ export default function MeetingWorkspace() {
 
     if (!mountedRef.current) return;
 
-    if (reason === "discard" || blob.size > MAX_AUDIO_BYTES) {
+    if (reason === "discard" || blob.size > MAX_RECORDING_BYTES) {
       setRecordingState("idle");
       setRecordingElapsedMs(0);
       setAudioError("Recording exceeded the 20 MiB limit and was discarded. Try a shorter recording.");
@@ -306,6 +326,7 @@ export default function MeetingWorkspace() {
       blob,
       filename: `recording.${extensionForMimeType(mimeType)}`,
       sizeBytes: blob.size,
+      durationMs: startedAtRef.current ? Date.now() - startedAtRef.current : null,
       source: "record",
     });
     setProcessError(null);
@@ -324,14 +345,14 @@ export default function MeetingWorkspace() {
   }
 
   // --- Upload -----------------------------------------------------------------
-  function handleValidatedFile(file: File) {
+  async function handleValidatedFile(file: File) {
     setAudioError(null);
     if (file.size === 0) {
       setAudioError("Selected file is empty. Choose another file.");
       return;
     }
-    if (!isAudioSizeAllowed(file.size)) {
-      setAudioError("File exceeds the 20 MiB limit. Choose a smaller file.");
+    if (!isAudioSizeAllowed(file.size, MAX_UPLOAD_BYTES)) {
+      setAudioError("File exceeds the 100 MiB limit. Choose a smaller file.");
       return;
     }
     if (!hasAllowedAudioFormat(file.name, file.type)) {
@@ -339,7 +360,11 @@ export default function MeetingWorkspace() {
       return;
     }
 
-    setAudio({ blob: file, filename: file.name, sizeBytes: file.size, source: "upload" });
+    const token = ++audioInputTokenRef.current;
+    const durationMs = await probeAudioDuration(file);
+    if (token !== audioInputTokenRef.current || !mountedRef.current) return;
+
+    setAudio({ blob: file, filename: file.name, sizeBytes: file.size, durationMs, source: "upload" });
     setProcessError(null);
   }
 
@@ -347,7 +372,7 @@ export default function MeetingWorkspace() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    handleValidatedFile(file);
+    void handleValidatedFile(file);
   }
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
@@ -355,7 +380,7 @@ export default function MeetingWorkspace() {
     setIsDragOver(false);
     if (processing) return;
     const file = e.dataTransfer.files?.[0];
-    if (file) handleValidatedFile(file);
+    if (file) void handleValidatedFile(file);
   }
 
   // --- Tabs -----------------------------------------------------------------
@@ -371,31 +396,67 @@ export default function MeetingWorkspace() {
   }
 
   // --- Process meeting ---------------------------------------------------------
+  // Checkpoints a result (memory handoff + best-effort cache) without navigating. Used both
+  // for the "transcribed" checkpoint (summary not attempted yet) and for the final outcome,
+  // right before navigate — see finalizeResult below (PRD v3 FR-05/Technical Design).
+  function checkpointResult(result: MeetingResult) {
+    setSessionResult(result);
+    writeStoredValue(LAST_RESULT_STORAGE_KEY, JSON.stringify(result));
+  }
+
+  function finalizeResult(result: MeetingResult, attemptId: number) {
+    if (attemptId !== attemptIdRef.current) return; // a newer attempt has since started
+    checkpointResult(result);
+    router.push("/results");
+  }
+
   async function handleProcess() {
     if (!canProcess || !audio) return;
 
     const attemptId = ++attemptIdRef.current;
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    setProcessing(true);
+    setProcessStage("uploading");
     setProcessError(null);
+
+    // One deadline for the whole attempt from the moment Process is pressed; each request
+    // below is bounded by whichever is smaller: its own step budget or what's left of this
+    // total (PRD v3 section 3/Technical Design budget rules).
+    const overallDeadline = Date.now() + TOTAL_BUDGET_MS;
 
     const formData = new FormData();
     formData.append("audio", audio.blob, audio.filename);
     formData.append("geminiApiKey", geminiKey);
 
     try {
-      const res = await fetch("/api/process-meeting", {
-        method: "POST",
-        body: formData,
-        signal: controller.signal,
-      });
+      const firstController = new AbortController();
+      abortControllerRef.current = firstController;
+      const firstBudget = Math.max(0, Math.min(PROCESS_BUDGET_MS, overallDeadline - Date.now()));
+      const firstTimer = window.setTimeout(() => firstController.abort(), firstBudget);
+
+      let res: Response;
+      try {
+        res = await fetch("/api/process-meeting", {
+          method: "POST",
+          body: formData,
+          signal: firstController.signal,
+        });
+      } catch (err) {
+        if (attemptId !== attemptIdRef.current) return;
+        setProcessError(
+          err instanceof DOMException && err.name === "AbortError"
+            ? "Upload and transcription did not finish within the time budget. You can try again."
+            : "Could not reach the server. Check your connection and try again.",
+        );
+        return;
+      } finally {
+        window.clearTimeout(firstTimer);
+      }
       if (attemptId !== attemptIdRef.current) return;
 
       let data: unknown;
       try {
         data = await res.json();
       } catch {
+        if (attemptId !== attemptIdRef.current) return;
         setProcessError("The server returned an unexpected response.");
         return;
       }
@@ -406,16 +467,89 @@ export default function MeetingWorkspace() {
         return;
       }
 
+      const transcribed = data as MeetingResult;
       setSessionAudio(audio.blob);
-      writeStoredValue(LAST_RESULT_STORAGE_KEY, JSON.stringify(data as MeetingResult));
-      router.push("/results");
-    } catch (err) {
+
+      if (transcribed.status === "no_speech") {
+        finalizeResult(transcribed, attemptId);
+        return;
+      }
+
+      // Hold the transcript as a checkpoint before attempting summarization, so a summary
+      // failure, timeout or this-tab cache failure can never lose it (PRD v3 FR-05).
+      checkpointResult(transcribed);
+      setProcessStage("summarizing");
+
+      const remaining = overallDeadline - Date.now();
+      if (remaining <= 0) {
+        finalizeResult(
+          { ...transcribed, status: "summary_failed", summaryError: "Ran out of time budget before summarization could start." },
+          attemptId,
+        );
+        return;
+      }
+
+      const summaryController = new AbortController();
+      abortControllerRef.current = summaryController;
+      const summaryBudget = Math.min(SUMMARY_BUDGET_MS, remaining);
+      const summaryTimer = window.setTimeout(() => summaryController.abort(), summaryBudget);
+
+      let summaryRes: Response;
+      try {
+        summaryRes = await fetch("/api/summarize-meeting", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: transcribed.transcript, geminiApiKey: geminiKey }),
+          signal: summaryController.signal,
+        });
+      } catch (err) {
+        if (attemptId !== attemptIdRef.current) return;
+        finalizeResult(
+          {
+            ...transcribed,
+            status: "summary_failed",
+            summaryError:
+              err instanceof DOMException && err.name === "AbortError"
+                ? "Summarization did not finish within the time budget."
+                : "Could not reach the server to generate the summary.",
+          },
+          attemptId,
+        );
+        return;
+      } finally {
+        window.clearTimeout(summaryTimer);
+      }
       if (attemptId !== attemptIdRef.current) return;
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      setProcessError("Could not reach the server. Check your connection and try again.");
+
+      let summaryData: unknown;
+      try {
+        summaryData = await summaryRes.json();
+      } catch {
+        if (attemptId !== attemptIdRef.current) return;
+        finalizeResult(
+          { ...transcribed, status: "summary_failed", summaryError: "The server returned an unexpected response while summarizing." },
+          attemptId,
+        );
+        return;
+      }
+      if (attemptId !== attemptIdRef.current) return;
+
+      if (!summaryRes.ok) {
+        finalizeResult(
+          { ...transcribed, status: "summary_failed", summaryError: (summaryData as MeetingErrorResponse)?.error || "Summarization failed." },
+          attemptId,
+        );
+        return;
+      }
+
+      const summaryResult = summaryData as SummaryRetryResult;
+      finalizeResult(
+        { ...transcribed, status: summaryResult.status, summary: summaryResult.summary, summaryError: summaryResult.summaryError },
+        attemptId,
+      );
     } finally {
       if (attemptId === attemptIdRef.current) {
-        setProcessing(false);
+        setProcessStage(null);
         abortControllerRef.current = null;
       }
     }
@@ -755,7 +889,7 @@ export default function MeetingWorkspace() {
                   <p className="mt-1 text-xs text-zinc-500">{UPLOAD_HELPER_TEXT}</p>
 
                   <div className="mt-3 flex items-center gap-1.5">
-                    {["MP3", "WAV", "M4A", "WebM", "Max 20MB"].map((badge) => (
+                    {["MP3", "WAV", "M4A", "WebM", "Max 100 MiB"].map((badge) => (
                       <span
                         key={badge}
                         className="rounded-md bg-white border border-zinc-200 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 shadow-2xs"
@@ -784,7 +918,7 @@ export default function MeetingWorkspace() {
                         {audio.filename}
                       </p>
                       <p className="text-[11px] text-zinc-500 font-mono">
-                        {formatBytes(audio.sizeBytes)} • {audio.source === "record" ? "Live Voice Capture" : "Uploaded Ingest"}
+                        {formatBytes(audio.sizeBytes)} • {audio.durationMs !== null ? formatClock(audio.durationMs) : "duration unknown"} • {audio.source === "record" ? "Live Voice Capture" : "Uploaded Ingest"}
                       </p>
                     </div>
                   </div>
@@ -794,6 +928,12 @@ export default function MeetingWorkspace() {
                     Ready for Ingest
                   </span>
                 </div>
+
+                {durationOverLimit && (
+                  <p className="mt-3 text-[11px] font-semibold text-amber-700">
+                    This file is about {formatClock(audio.durationMs!)} long, over the 60-minute demo target. Processing time and result quality beyond 60 minutes have not been verified.
+                  </p>
+                )}
 
                 {previewUrl && (
                   <div className="mt-3">
@@ -846,7 +986,7 @@ export default function MeetingWorkspace() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                     </svg>
-                    <span>Analyzing Meeting with Gemini…</span>
+                    <span>{processStage === "uploading" ? "Uploading & Transcribing…" : "Generating Summary…"}</span>
                   </>
                 ) : (
                   <>
@@ -865,67 +1005,52 @@ export default function MeetingWorkspace() {
               </p>
             )}
 
-            {/* LIVE PROCESSING PROGRESS MODAL / PANEL */}
+            {/* LIVE PROCESSING PROGRESS PANEL — two real stages and real elapsed time only;
+                no fabricated percentage or ETA (PRD v3 FR-02). */}
             {processing && (
               <div role="status" aria-live="polite" className="mt-6 rounded-2xl border border-indigo-200/80 bg-white/95 p-5 shadow-md">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-2.5 w-2.5 rounded-full bg-indigo-600 animate-ping" />
                     <span className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
-                      Stage {currentStage.step} of 3: {currentStage.title}
+                      {processStage === "uploading" ? "Uploading & transcribing audio" : "Generating meeting summary"}
                     </span>
                   </div>
-                  <span className="font-mono text-sm font-extrabold text-indigo-700">
-                    {progressPercent}%
+                  <span className="font-mono text-xs font-bold text-indigo-700">
+                    Elapsed {formatClock(processingElapsedMs)}
                   </span>
                 </div>
 
-                {/* Animated Gradient Progress Bar */}
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-indigo-100/70 p-0.5">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-500 ease-out shadow-xs"
-                    style={{ width: `${progressPercent}%` }}
-                  />
+                {/* Indeterminate activity bar: there is no real percent-complete signal from
+                    either request, so this communicates "still working," not progress. */}
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-indigo-100/70">
+                  <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-xs animate-indeterminate" />
                 </div>
 
                 <p className="mt-2.5 text-xs text-zinc-600 leading-relaxed font-medium">
-                  {currentStage.desc}
+                  {processStage === "uploading"
+                    ? "Large files can take several minutes. This step uploads the audio to Gemini and transcribes the full meeting."
+                    : "Summarizing the full transcript. The transcript is already held in this tab even if this step fails."}
                 </p>
 
                 {/* Processing Steps Status Chips */}
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className={`rounded-xl p-2.5 text-xs border ${currentStage.step >= 1 ? "border-indigo-200 bg-indigo-50/70 text-indigo-900 font-semibold" : "border-zinc-200 bg-zinc-50 text-zinc-400"}`}>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className={`rounded-xl p-2.5 text-xs border ${processStage === "uploading" ? "border-indigo-200 bg-indigo-50/70 text-indigo-900 font-semibold" : "border-emerald-200 bg-emerald-50/70 text-emerald-900 font-semibold"}`}>
                     <div className="flex items-center gap-1.5">
-                      <span>{currentStage.step > 1 ? "✓" : "1."}</span>
-                      <span>Gemini Upload</span>
+                      <span>{processStage === "uploading" ? "1." : "✓"}</span>
+                      <span>Upload & Transcribe</span>
                     </div>
                   </div>
-                  <div className={`rounded-xl p-2.5 text-xs border ${currentStage.step >= 2 ? "border-indigo-200 bg-indigo-50/70 text-indigo-900 font-semibold" : "border-zinc-200 bg-zinc-50 text-zinc-400"}`}>
+                  <div className={`rounded-xl p-2.5 text-xs border ${processStage === "summarizing" ? "border-indigo-200 bg-indigo-50/70 text-indigo-900 font-semibold" : "border-zinc-200 bg-zinc-50 text-zinc-400"}`}>
                     <div className="flex items-center gap-1.5">
-                      <span>{currentStage.step > 2 ? "✓" : "2."}</span>
-                      <span>Diarization</span>
-                    </div>
-                  </div>
-                  <div className={`rounded-xl p-2.5 text-xs border ${currentStage.step >= 3 ? "border-indigo-200 bg-indigo-50/70 text-indigo-900 font-semibold" : "border-zinc-200 bg-zinc-50 text-zinc-400"}`}>
-                    <div className="flex items-center gap-1.5">
-                      <span>3.</span>
-                      <span>Synthesis</span>
+                      <span>2.</span>
+                      <span>Summarize</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Timers & Estimates */}
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3 text-xs">
-                  <div className="flex items-center gap-1.5 text-zinc-600">
-                    <span className="text-zinc-400">⏱️ Elapsed:</span>
-                    <span className="font-mono font-bold text-zinc-900">{formatClock(processingElapsedMs)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-zinc-600">
-                    <span className="text-zinc-400">⏳ Estimated:</span>
-                    <span className="font-medium text-zinc-800">
-                      ~{estimatedDurationSec}s {remainingSeconds > 0 ? `(~${remainingSeconds}s remaining)` : "(wrapping up…)"}
-                    </span>
-                  </div>
+                <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-zinc-100 pt-3 text-xs text-zinc-500">
+                  <span>No fixed ETA — this attempt ends automatically at a {formatClock(TOTAL_BUDGET_MS)} total time budget.</span>
                 </div>
               </div>
             )}
