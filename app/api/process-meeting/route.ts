@@ -10,16 +10,17 @@ import {
   transcribeAudio,
   uploadAudio,
 } from "@/lib/meeting/geminiTranscribe";
-import { GeminiError, summarizeTranscript } from "@/lib/meeting/gemini";
+import { summarizeOrFail } from "@/lib/meeting/gemini";
+import { SUMMARY_BUDGET_MS } from "@/lib/constants";
 
 // A single long request matches the accepted local-demo scope: the Gemini Files upload and
 // one foreground Transcribe Interactions call happen inside this handler, nothing is
-// persisted, and there is no queue/worker/webhook.
+// persisted, and there is no queue/worker/webhook. A failed summary can be retried afterward
+// without repeating this part — see /api/summarize-meeting.
 // (No route segment config is set: `cacheComponents` in next.config.ts already makes
 // this handler dynamic/uncached by default, and that option rejects `runtime`/`dynamic`.)
 
 const TRANSCRIPTION_BUDGET_MS = 180_000; // Gemini Files upload + Transcribe inference
-const SUMMARY_BUDGET_MS = 60_000;
 const CLEANUP_BUDGET_MS = 10_000;
 
 function errorResponse(message: string, status: number, warnings?: string[]): NextResponse<MeetingErrorResponse> {
@@ -119,24 +120,14 @@ export async function POST(request: NextRequest) {
     }
 
     const summaryDeadline = Date.now() + SUMMARY_BUDGET_MS;
-    try {
-      const summary = await summarizeTranscript(geminiApiKey, segments, summaryDeadline);
-      return resultResponse({
-        status: "completed",
-        transcript: segments,
-        summary,
-        ...(warnings.length ? { warnings } : {}),
-      });
-    } catch (err) {
-      const message = err instanceof GeminiError ? err.message : "Gemini summarization failed.";
-      return resultResponse({
-        status: "summary_failed",
-        transcript: segments,
-        summary: null,
-        summaryError: message,
-        ...(warnings.length ? { warnings } : {}),
-      });
-    }
+    const summaryResult = await summarizeOrFail(geminiApiKey, segments, summaryDeadline);
+    return resultResponse({
+      status: summaryResult.status,
+      transcript: segments,
+      summary: summaryResult.summary,
+      ...(summaryResult.summaryError ? { summaryError: summaryResult.summaryError } : {}),
+      ...(warnings.length ? { warnings } : {}),
+    });
   } catch (err) {
     console.error("process-meeting failed:", err instanceof Error ? err.message : err);
     return errorResponse(

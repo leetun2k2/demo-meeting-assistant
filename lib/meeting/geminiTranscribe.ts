@@ -306,5 +306,5 @@ export function normalizeTranscript(words: GeminiWordAnnotation[]): TranscriptSe
     }
   }
 
-  return segments.map(({ speaker, startMs, words }) => ({ speaker, startMs, text: words.join(" ").trim() }));
+  return segments.map(({ speaker, startMs, endMs, words }) => ({ speaker, startMs, endMs, text: words.join(" ").trim() }));
 }

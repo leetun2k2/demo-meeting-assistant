@@ -21,9 +21,9 @@ export const ALLOWED_AUDIO_MIME_TYPES = [
 // can best-effort remove it from localStorage on mount; its value is never read or sent.
 export const SONIOX_API_KEY_STORAGE_KEY = "meeting-assistant.sonioxApiKey";
 export const GEMINI_API_KEY_STORAGE_KEY = "meeting-assistant.geminiApiKey";
-// Holds only the most recent completed/summary_failed/no_speech result, so a reload doesn't
-// lose it. Overwritten on every new result and removed whenever the workspace clears results
-// (new attempt, audio replaced, input tab switched). Audio itself is still never persisted.
+// Holds the most recent Process Meeting outcome, written once when it arrives and updated
+// in place by action-item edits or a summary retry, so the /results page (and a reload of it)
+// always has something to show. Audio itself is still never persisted.
 export const LAST_RESULT_STORAGE_KEY = "meeting-assistant.lastResult";
 
 export const UPLOAD_HELPER_TEXT =
@@ -32,4 +32,9 @@ export const UPLOAD_HELPER_TEXT =
 export const KEYS_HELPER_TEXT =
   "Your Gemini API key is saved in this browser. Audio goes to Gemini 3.5 Transcribe and the transcript goes to Gemini 3.5 Flash-Lite when you process.";
 
-export const SWITCH_INPUT_NOTICE = "Switching input methods clears the current audio and results.";
+export const SWITCH_INPUT_NOTICE = "Switching input methods clears the current audio.";
+
+// Budget for one Gemini 3.5 Flash-Lite structured-output call. Shared by the initial
+// process-meeting pipeline and the summary-only retry endpoint, which both call the same
+// summarizeOrFail() helper.
+export const SUMMARY_BUDGET_MS = 60_000;

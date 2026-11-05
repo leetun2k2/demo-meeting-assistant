@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import ResultsPanel from "@/components/ResultsPanel";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   GEMINI_API_KEY_STORAGE_KEY,
   KEYS_HELPER_TEXT,
@@ -15,6 +16,8 @@ import {
 import { formatBytes, formatClock } from "@/lib/format";
 import { probeStorageAvailable, readStoredValue, removeStoredValue, writeStoredValue } from "@/lib/storage";
 import { hasAllowedAudioFormat, isAudioSizeAllowed } from "@/lib/validateAudio";
+import { isStoredMeetingResult } from "@/lib/meeting/storedResult";
+import { setSessionAudio } from "@/lib/meeting/audioSession";
 import type { MeetingErrorResponse, MeetingResult } from "@/lib/types";
 
 type InputMode = "record" | "upload";
@@ -30,17 +33,6 @@ interface AudioInput {
 
 const STORAGE_UNAVAILABLE_MESSAGE = "Your API key could not be saved in this browser.";
 
-// Loose runtime guard for a result restored from localStorage: the stored JSON could be from
-// an older app version or hand-edited, so shape it like any other untrusted external input.
-function isStoredMeetingResult(value: unknown): value is MeetingResult {
-  if (!value || typeof value !== "object") return false;
-  const obj = value as Record<string, unknown>;
-  return (
-    (obj.status === "completed" || obj.status === "summary_failed" || obj.status === "no_speech") &&
-    Array.isArray(obj.transcript)
-  );
-}
-
 function pickSupportedMimeType(): string | null {
   if (typeof MediaRecorder === "undefined") return null;
   const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
@@ -55,10 +47,13 @@ function extensionForMimeType(mimeType: string): string {
 }
 
 export default function MeetingWorkspace() {
+  const router = useRouter();
+
   // --- Configuration -------------------------------------------------------
   const [geminiKey, setGeminiKey] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [storageNotice, setStorageNotice] = useState<string | null>(null);
+  const [hasPreviousResult, setHasPreviousResult] = useState(false);
 
   // --- Audio input -----------------------------------------------------------
   const [inputMode, setInputMode] = useState<InputMode>("record");
@@ -82,7 +77,6 @@ export default function MeetingWorkspace() {
   // --- Processing ------------------------------------------------------------
   const [processing, setProcessing] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
-  const [result, setResult] = useState<MeetingResult | null>(null);
   const attemptIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -109,11 +103,13 @@ export default function MeetingWorkspace() {
     if (savedGemini) setGeminiKey(savedGemini);
     if (!storageOk) setStorageNotice(STORAGE_UNAVAILABLE_MESSAGE);
 
+    // Results now live on /results; only check whether a previous one exists, to offer a
+    // link back to it (the /results page itself reads and owns the actual stored value).
     const savedResultRaw = readStoredValue(LAST_RESULT_STORAGE_KEY);
     if (savedResultRaw) {
       try {
         const parsed: unknown = JSON.parse(savedResultRaw);
-        if (isStoredMeetingResult(parsed)) setResult(parsed);
+        if (isStoredMeetingResult(parsed)) setHasPreviousResult(true);
       } catch {
         // Corrupted/outdated entry; ignore rather than surface a restore error.
       }
@@ -124,18 +120,6 @@ export default function MeetingWorkspace() {
     removeStoredValue(SONIOX_API_KEY_STORAGE_KEY);
     setHydrated(true);
   }, []);
-
-  // Keep the last result mirrored to localStorage so a reload doesn't lose it; audio itself
-  // is still never persisted. Writes/removes after hydration only, so an empty initial state
-  // cannot wipe a value this same effect just restored above.
-  useEffect(() => {
-    if (!hydrated) return;
-    if (result) {
-      writeStoredValue(LAST_RESULT_STORAGE_KEY, JSON.stringify(result));
-    } else {
-      removeStoredValue(LAST_RESULT_STORAGE_KEY);
-    }
-  }, [result, hydrated]);
 
   // Native audio preview (P1): derive the object URL from the current audio during render,
   // and only use an effect for the cleanup side effect (revoking it on change/unmount).
@@ -160,6 +144,27 @@ export default function MeetingWorkspace() {
   // Recomputed each render; forceProcessingTick above forces a render every second.
   const processingElapsedMs = processingStartRef.current ? Date.now() - processingStartRef.current : 0;
 
+  const estimatedDurationSec = useMemo(() => {
+    if (!audio) return 40;
+    const sizeMb = audio.sizeBytes / (1024 * 1024);
+    const estimated = Math.round(15 + sizeMb * 2.5);
+    return Math.max(20, Math.min(120, estimated));
+  }, [audio]);
+
+  const elapsedSeconds = Math.floor(processingElapsedMs / 1000);
+  const remainingSeconds = Math.max(0, estimatedDurationSec - elapsedSeconds);
+  const progressPercent = Math.min(95, Math.round((elapsedSeconds / estimatedDurationSec) * 90));
+
+  const currentStage = useMemo(() => {
+    if (elapsedSeconds < 8) {
+      return { step: 1, title: "Uploading audio to Gemini…", desc: "Connecting and transferring file to Gemini Files API" };
+    } else if (elapsedSeconds < estimatedDurationSec * 0.7) {
+      return { step: 2, title: "Transcribing speech & diarizing speakers…", desc: "Gemini 3.5 Transcribe is analyzing audio and timestamps" };
+    } else {
+      return { step: 3, title: "Generating meeting intelligence…", desc: "Gemini 3.5 Flash-Lite is extracting decisions and action items" };
+    }
+  }, [elapsedSeconds, estimatedDurationSec]);
+
   // --- Derived state -----------------------------------------------------------
   const hasGeminiKey = geminiKey.trim() !== "";
   const isRecordingBusy = recordingState === "acquiring" || recordingState === "recording" || recordingState === "finalizing";
@@ -170,11 +175,6 @@ export default function MeetingWorkspace() {
     if (!audio || !hasGeminiKey) return "Add your Gemini API key and record or upload audio.";
     return null;
   }, [processing, isRecordingBusy, audio, hasGeminiKey]);
-
-  function clearResults() {
-    setResult(null);
-    setProcessError(null);
-  }
 
   function handleGeminiKeyChange(value: string) {
     setGeminiKey(value);
@@ -312,7 +312,7 @@ export default function MeetingWorkspace() {
       sizeBytes: blob.size,
       source: "record",
     });
-    clearResults();
+    setProcessError(null);
     setRecordingState("stopped");
     setRecordingNotice(reason === "limit" ? "5-minute limit reached. Your recording is ready to process." : null);
   }
@@ -324,7 +324,7 @@ export default function MeetingWorkspace() {
     setRecordingNotice(null);
     setRecordingElapsedMs(0);
     setRecordingState("idle");
-    clearResults();
+    setProcessError(null);
   }
 
   // --- Upload -----------------------------------------------------------------
@@ -348,7 +348,7 @@ export default function MeetingWorkspace() {
     }
 
     setAudio({ blob: file, filename: file.name, sizeBytes: file.size, source: "upload" });
-    clearResults();
+    setProcessError(null);
   }
 
   // --- Tabs -----------------------------------------------------------------
@@ -359,7 +359,7 @@ export default function MeetingWorkspace() {
     setRecordingNotice(null);
     if (audio) {
       setAudio(null);
-      clearResults();
+      setProcessError(null);
     }
   }
 
@@ -371,7 +371,7 @@ export default function MeetingWorkspace() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     setProcessing(true);
-    clearResults();
+    setProcessError(null);
 
     const formData = new FormData();
     formData.append("audio", audio.blob, audio.filename);
@@ -398,7 +398,14 @@ export default function MeetingWorkspace() {
         setProcessError((data as MeetingErrorResponse)?.error || "Processing failed.");
         return;
       }
-      setResult(data as MeetingResult);
+
+      // Hand off to /results: the audio Blob goes through the in-memory session singleton
+      // (it can't be JSON-serialized), the result through the same localStorage slot the
+      // results page reads from. Navigating away is the enhanced flow the UI now uses instead
+      // of rendering results inline on this page.
+      setSessionAudio(audio.blob);
+      writeStoredValue(LAST_RESULT_STORAGE_KEY, JSON.stringify(data as MeetingResult));
+      router.push("/results");
     } catch (err) {
       if (attemptId !== attemptIdRef.current) return;
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -423,6 +430,11 @@ export default function MeetingWorkspace() {
         <p className="mt-1 text-sm text-zinc-500">
           Record or upload a meeting. Get a transcript, decisions and action items.
         </p>
+        {hasPreviousResult && (
+          <Link href="/results" className="mt-2 inline-block text-sm font-medium text-blue-700 hover:underline">
+            View last result →
+          </Link>
+        )}
       </header>
 
       {/* Section 1 — Configuration */}
@@ -565,33 +577,95 @@ export default function MeetingWorkspace() {
             type="button"
             onClick={handleProcess}
             disabled={!canProcess}
-            className="rounded-md bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold text-white transition-all ${
+              processing
+                ? "bg-emerald-800 cursor-not-allowed opacity-90"
+                : "bg-emerald-700 hover:bg-emerald-800 shadow-xs disabled:cursor-not-allowed disabled:opacity-50"
+            }`}
           >
-            {processing ? "Processing…" : "Process Meeting"}
+            {processing && (
+              <svg className="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            <span>{processing ? "Processing Meeting…" : "Process Meeting"}</span>
           </button>
           {disabledReason && <p className="text-sm text-zinc-500">{disabledReason}</p>}
         </div>
 
-        <div role="status" aria-live="polite" className="mt-3 text-sm text-zinc-600">
-          {processing && (
-            <>
-              Keep this page open; processing may take a few minutes.{" "}
-              <span aria-hidden="true" className="font-mono text-zinc-400">
-                Elapsed {formatClock(processingElapsedMs)}
+        {/* Live Loading, Step Indicator, Elapsed Counter, and Estimation */}
+        {processing && (
+          <div role="status" aria-live="polite" className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 shadow-2xs">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-emerald-900">
+                  Step {currentStage.step} of 3: {currentStage.title}
+                </span>
+              </div>
+              <span className="font-mono text-xs font-bold text-emerald-800">
+                {progressPercent}%
               </span>
-            </>
-          )}
-        </div>
+            </div>
 
+            {/* Animated progress bar */}
+            <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-500 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+
+            <p className="mt-2 text-xs text-emerald-700 leading-relaxed">
+              {currentStage.desc}
+            </p>
+
+            {/* Timers & Estimation */}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-200/50 pt-3 text-xs">
+              <div className="flex items-center gap-1.5 text-zinc-700">
+                <span className="text-zinc-500">⏱️ Elapsed:</span>
+                <span className="font-mono font-bold text-zinc-900">{formatClock(processingElapsedMs)}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-zinc-600">
+                <span className="text-zinc-500">⏳ Estimated:</span>
+                <span className="font-medium text-zinc-800">
+                  ~{estimatedDurationSec}s {remainingSeconds > 0 ? `(~${remainingSeconds}s remaining)` : "(finishing up…)"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error Display */}
         {processError && (
-          <p role="alert" className="mt-2 text-sm text-red-700">
-            {processError}
-          </p>
+          <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-rose-900 shadow-xs animate-fade-in">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700 font-bold">
+                ⚠️
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold text-rose-900">Processing Failed</h3>
+                  <button
+                    type="button"
+                    onClick={() => setProcessError(null)}
+                    className="text-xs font-semibold text-rose-700 hover:text-rose-900"
+                  >
+                    Dismiss ✕
+                  </button>
+                </div>
+                <p className="mt-1.5 text-xs text-rose-800 leading-relaxed break-words font-mono bg-rose-100/70 p-2.5 rounded-lg border border-rose-200/60 select-text">
+                  {processError}
+                </p>
+                <p className="mt-2 text-[11px] text-rose-700">
+                  Please verify your Gemini API key in Google AI Studio or check that the file is not corrupted.
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </section>
-
-      {/* Section 4 — Results */}
-      {result && <ResultsPanel result={result} />}
     </div>
   );
 }
