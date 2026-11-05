@@ -32,6 +32,8 @@ export function applySpeakerNamesToSummary(summary: MeetingSummary): MeetingSumm
   const n = (text: string) => normalizeSpeakerMentions(text, summary.speakerNames);
   return {
     ...summary,
+    themes: summary.themes.map(n),
+    keyTakeaways: summary.keyTakeaways.map(n),
     title: n(summary.title),
     executiveSummary: n(summary.executiveSummary),
     discussions: summary.discussions.map(n),

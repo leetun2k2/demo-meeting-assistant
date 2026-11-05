@@ -31,7 +31,7 @@ function errorResponse(message: string, status: number, warnings?: string[]): Ne
 }
 
 function resultResponse(result: MeetingResult): NextResponse<MeetingResult> {
-  return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ ...result, schemaVersion: 3, processedAt: new Date().toISOString() }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {

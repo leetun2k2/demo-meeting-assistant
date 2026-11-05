@@ -6,18 +6,17 @@ import { isStoredMeetingResult } from "@/lib/meeting/storedResult";
 import { getSessionAudioUrl } from "@/lib/meeting/audioSession";
 import { LAST_RESULT_STORAGE_KEY } from "@/lib/constants";
 import { readStoredValue, writeStoredValue } from "@/lib/storage";
-import { WIREFRAME_V2_RESULT } from "@/lib/meeting/wireframeData";
+import Link from "next/link";
 import type { ActionItem, MeetingResult, SummaryRetryResult } from "@/lib/types";
 
 export default function ResultsPage() {
   const [hydrated, setHydrated] = useState(false);
-  const [result, setResult] = useState<MeetingResult>(WIREFRAME_V2_RESULT);
-  const [isDemo, setIsDemo] = useState(true);
+  const [result, setResult] = useState<MeetingResult | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // Read once on mount: the result from localStorage (written by MeetingWorkspace right
   // before it navigated here, or by an earlier visit to this same page), and the audio URL
-  // from the in-memory session singleton. If none exists, default to wireframe v2 content.
+  // from the in-memory session singleton. If none exists, show an empty state.
   useEffect(() => {
     const raw = readStoredValue(LAST_RESULT_STORAGE_KEY);
     if (raw) {
@@ -26,10 +25,9 @@ export default function ResultsPage() {
         if (isStoredMeetingResult(parsed)) {
           // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount read
           setResult(parsed);
-          setIsDemo(false);
         }
       } catch {
-        // Corrupted entry; fallback to wireframe v2 demo
+        // Corrupted entry; ignore invalid cache
       }
     }
     setAudioUrl(getSessionAudioUrl());
@@ -59,6 +57,8 @@ export default function ResultsPage() {
     );
   }
 
+  if (!result) return <main className="mx-auto max-w-xl p-12"><h1 className="text-2xl font-bold">No meeting results yet</h1><p className="my-4">Record or upload audio to generate results. Older saved results need to be processed again.</p><Link href="/" className="text-indigo-600 underline">Go to workspace</Link></main>;
+
   return (
     <OutputPage
       result={result}
@@ -66,7 +66,7 @@ export default function ResultsPage() {
       audioAvailable={!!audioUrl}
       onActionItemsChange={handleActionItemsChange}
       onSummaryUpdate={handleSummaryUpdate}
-      isDemo={isDemo}
+      onMeetingChange={(changes) => persist({ ...result, ...changes })}
     />
   );
 }

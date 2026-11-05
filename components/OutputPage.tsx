@@ -8,14 +8,14 @@ import type {
   MeetingResult,
   SummaryRetryResult,
 } from "@/lib/types";
-import { displaySpeaker } from "@/lib/meeting/display";
-import { downloadTextFile, slugForFilename, toActionItemsText, toSummaryText } from "@/lib/meeting/export";
+import { displaySpeaker, normalizeSpeakerMentions } from "@/lib/meeting/display";
+import { downloadTextFile, slugForFilename, toSummaryText } from "@/lib/meeting/export";
 import { formatClock } from "@/lib/format";
 import { GEMINI_API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { readStoredValue } from "@/lib/storage";
-import { WIREFRAME_V2_METADATA, WIREFRAME_V2_RESULT } from "@/lib/meeting/wireframeData";
 
-// --- SVG Icons matching wireframe v2 ---
+
+// --- SVG Icons ---
 function IconSparkles({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -93,35 +93,6 @@ function IconDocumentText({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function IconTarget({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="6" />
-      <circle cx="12" cy="12" r="2" />
-    </svg>
-  );
-}
-
-function IconAlertTriangle({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-      <line x1="12" x2="12" y1="9" y2="13" />
-      <line x1="12" x2="12.01" y1="17" y2="17" />
-    </svg>
-  );
-}
-
-function IconChevronsRight({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="13 17 18 12 13 7" />
-      <polyline points="6 17 11 12 6 7" />
-    </svg>
-  );
-}
-
 function IconMessageSquare({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -173,26 +144,6 @@ function IconLightning({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function IconHelpCircle({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-      <line x1="12" x2="12.01" y1="17" y2="17" />
-    </svg>
-  );
-}
-
-function IconLightbulb({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="9" x2="15" y1="18" y2="18" />
-      <line x1="10" x2="14" y1="22" y2="22" />
-      <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
-    </svg>
-  );
-}
-
 function IconSend({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -202,32 +153,18 @@ function IconSend({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function IconJira({ className = "w-3.5 h-3.5" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M11.53 2c0 2.4-1.97 4.35-4.4 4.35H2.8l4.37 4.35c2.4 2.4 2.4 6.3 0 8.7L2.8 24h4.33c2.43 0 4.4-1.95 4.4-4.35V2zm5.74 5.22c0 2.4-1.97 4.35-4.4 4.35h-4.33l4.37 4.35c2.4 2.4 2.4 6.3 0 8.7l-4.37 4.38h4.33c2.43 0 4.4-1.95 4.4-4.35V7.22zm5.73 5.22c0 2.4-1.97 4.35-4.4 4.35h-4.33l4.37 4.35c2.4 2.4 2.4 6.3 0 8.7l-4.37 4.38h4.33c2.43 0 4.4-1.95 4.4-4.35V12.44z" />
-    </svg>
-  );
-}
-
-function IconNotion({ className = "w-3.5 h-3.5" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.466-.373-.886-.606-1.96-.513L2.873 2.574c-.373.047-.466.28-.28.466l1.866 1.168zm.933 3.639v13.076c0 .746.42 1.026 1.213.98l14.428-.84c.793-.046.98-.56.98-1.166V6.914c0-.606-.233-.886-.84-.84l-14.894.887c-.606.046-.887.327-.887.886zm13.355 1.54c.093.42 0 .84-.42.886l-.886.14c-.373.047-.513.233-.513.56v7.792c0 .42.233.606.653.56l1.166-.093c.42-.047.513.233.373.653l-1.073 1.12c-.28.28-.653.28-1.213.28l-3.36.186c-.56.047-.7-.14-.7-.513v-.373c0-.327.187-.56.56-.607l.793-.093c.373-.047.466-.233.466-.606v-5.226l-4.34 7.091c-.28.466-.56.606-1.073.653l-2.613.14c-.467.047-.654-.186-.654-.606V9.434c0-.42.187-.653.607-.7l1.493-.093c.42-.047.56.14.56.56v5.879l4.573-7.091c.28-.42.607-.606 1.167-.653l3.033-.187c.42-.046.7.14.793.56z" />
-    </svg>
-  );
-}
-
-// --- Donut Chart for Speaker Breakdown ---
+// --- Donut Chart with Vibrant Colors ---
 function DonutChart({
   breakdown,
-  totalLabel = "32 min",
+  totalLabel = "—",
+  totalCaption = "Speaking time",
 }: {
   breakdown: Array<{ speaker: string; percentage: number; color: string }>;
   totalLabel?: string;
+  totalCaption?: string;
 }) {
   const radius = 38;
-  const strokeWidth = 14;
+  const strokeWidth = 12;
   const circumference = 2 * Math.PI * radius;
 
   const slices = useMemo(() => {
@@ -261,7 +198,7 @@ function DonutChart({
       </svg>
       <div className="absolute flex flex-col items-center justify-center text-center">
         <span className="text-sm font-bold text-zinc-900">{totalLabel}</span>
-        <span className="text-[10px] uppercase tracking-wider text-zinc-400">Total</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600">{totalCaption}</span>
       </div>
     </div>
   );
@@ -273,7 +210,7 @@ interface OutputPageProps {
   audioAvailable: boolean;
   onActionItemsChange: (next: ActionItem[]) => void;
   onSummaryUpdate: (next: SummaryRetryResult) => void;
-  isDemo?: boolean;
+  onMeetingChange: (changes: Pick<MeetingResult, "meetingOwner" | "reviewStatus" | "audioDurationMs">) => void;
 }
 
 export default function OutputPage({
@@ -282,17 +219,19 @@ export default function OutputPage({
   audioAvailable,
   onActionItemsChange,
   onSummaryUpdate,
-  isDemo = false,
+  onMeetingChange,
 }: OutputPageProps) {
   const { transcript, summary } = result;
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Filter & Search states
+  // Tabs & Filters
   const [activeTab, setActiveTab] = useState<"summary" | "transcript" | "insights" | "json">("summary");
   const [transcriptQuery, setTranscriptQuery] = useState("");
   const [speakerFilter, setSpeakerFilter] = useState("all");
   const [importantOnly, setImportantOnly] = useState(false);
-  const [starredIndices, setStarredIndices] = useState<Set<number>>(new Set([3])); // Default starred index 3 (00:23) matching wireframe
+  const [starredIndices, setStarredIndices] = useState<Set<number>>(new Set());
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [currentTimeSec, setCurrentTimeSec] = useState(0);
 
   // Modals & Popups
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -304,12 +243,17 @@ export default function OutputPage({
 
   // New action item state
   const [newTask, setNewTask] = useState("");
-  const [newAssignee, setNewAssignee] = useState("Speaker 3");
-  const [newDeadline, setNewDeadline] = useState("Today");
+  const [newAssignee, setNewAssignee] = useState("");
+  const [newDeadline, setNewDeadline] = useState("");
   const [newPriority, setNewPriority] = useState<"High" | "Medium" | "Low">("Medium");
 
   // Retry state
   const [retryingSummary, setRetryingSummary] = useState(false);
+
+  async function copyText(text: string, message: string) {
+    try { await navigator.clipboard.writeText(text); showToast(message); }
+    catch { showToast("Could not copy. Please select and copy the text manually."); }
+  }
 
   function showToast(msg: string) {
     setToastMessage(msg);
@@ -320,30 +264,22 @@ export default function OutputPage({
     return Array.from(new Set(transcript.map((s) => s.speaker)));
   }, [transcript]);
 
-  // Speaker breakdown calculation
+  const transcriptDuration = Math.max(0, ...transcript.map((t) => t.endMs ?? t.startMs));
+  const durationMs = result.audioDurationMs ?? transcriptDuration;
+  const durationLabel = durationMs > 0 ? `${formatClock(durationMs)}${result.audioDurationMs ? "" : " (est.)"}` : "Unavailable";
+  const hasTiming = transcript.length > 0 && transcript.every((t) => t.endMs !== undefined && t.endMs > t.startMs);
   const speakerBreakdownData = useMemo(() => {
-    if (isDemo || distinctSpeakers.length === 0) {
-      return WIREFRAME_V2_METADATA.speakerBreakdown;
-    }
-    const colorPalette = ["#475569", "#94a3b8", "#cbd5e1", "#64748b", "#334155"];
+    const palette = ["#6366f1", "#06b6d4", "#f59e0b", "#ec4899", "#10b981"];
     const counts: Record<string, number> = {};
-    let totalLen = 0;
-    transcript.forEach((t) => {
-      const len = t.text.length;
-      counts[t.speaker] = (counts[t.speaker] || 0) + len;
-      totalLen += len;
-    });
-    return Object.entries(counts).map(([spk, count], idx) => {
-      const pct = totalLen > 0 ? Math.round((count / totalLen) * 100) : 0;
-      const minutes = ((pct / 100) * 32).toFixed(1);
-      return {
-        speaker: spk,
-        percentage: pct,
-        duration: `${minutes} min`,
-        color: colorPalette[idx % colorPalette.length],
-      };
-    });
-  }, [isDemo, distinctSpeakers, transcript]);
+    transcript.forEach((t) => { counts[t.speaker] = (counts[t.speaker] ?? 0) + (hasTiming ? t.endMs! - t.startMs : t.text.length); });
+    const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+    return Object.entries(counts).map(([speaker, count], idx) => ({
+      speaker: displaySpeaker(speaker, summary?.speakerNames ?? []),
+      percentage: total ? Math.round(count / total * 100) : 0,
+      duration: hasTiming ? `${(count / 60000).toFixed(1)} min` : "text share",
+      color: palette[idx % palette.length],
+    }));
+  }, [transcript, hasTiming, summary]);
 
   // Filtered transcript
   const filteredTranscript = useMemo(() => {
@@ -371,11 +307,21 @@ export default function OutputPage({
     const seg = transcript[idx];
     if (audioAvailable && audioRef.current && seg) {
       audioRef.current.currentTime = seg.startMs / 1000;
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().then(() => setIsPlayingAudio(true)).catch(() => showToast("Audio playback unavailable."));
     }
     const el = document.getElementById(`seg-${idx}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function toggleAudioPlayback() {
+    if (!audioRef.current) return;
+    if (isPlayingAudio) {
+      audioRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlayingAudio(true)).catch(() => showToast("Audio playback unavailable."));
     }
   }
 
@@ -394,7 +340,7 @@ export default function OutputPage({
     if (!summary || !newTask.trim()) return;
     const newItem: ActionItem = {
       task: newTask.trim(),
-      assignee: newAssignee.trim() || "Speaker 1",
+      assignee: newAssignee.trim() || "Unknown",
       deadline: newDeadline.trim() || "Not specified",
       priority: newPriority,
       status: "To Do",
@@ -424,7 +370,7 @@ export default function OutputPage({
         return;
       }
       onSummaryUpdate(data as SummaryRetryResult);
-      showToast("Summary regenerated!");
+      showToast(data.status === "completed" ? "Summary regenerated!" : data.summaryError || "Summary could not be generated. Please retry.");
     } catch {
       showToast("Could not regenerate summary.");
     } finally {
@@ -432,1088 +378,999 @@ export default function OutputPage({
     }
   }
 
-  function handleAskAi(e: React.FormEvent) {
+  const [askingAi, setAskingAi] = useState(false);
+  async function handleAskAi(e: React.FormEvent) {
     e.preventDefault();
-    if (!aiQuestion.trim()) return;
-    const q = aiQuestion.toLowerCase();
-    if (q.includes("train") || q.includes("ticket") || q.includes("travel")) {
-      setAiAnswer(
-        "Based on the transcript, the team agreed to take the regular train (not express) to save budget. Speaker 3 committed to booking the tickets online right away.",
-      );
-    } else if (q.includes("time") || q.includes("arrival") || q.includes("schedule")) {
-      setAiAnswer(
-        "The meeting with the client starts at 10:00 AM. The team decided to arrive before 9:30 AM (at least 30 minutes early) to set up presentation equipment.",
-      );
-    } else {
-      setAiAnswer(
-        `Regarding "${aiQuestion}": The team's consensus focuses on cost-conscious transportation, timely arrival before 9:30, and client presentation prep owned by Speaker 2 and Speaker 3.`,
-      );
-    }
+    if (!aiQuestion.trim() || askingAi) return;
+    const apiKey = readStoredValue(GEMINI_API_KEY_STORAGE_KEY);
+    if (!apiKey) { showToast("Add your Gemini API key on the home page first."); return; }
+    setAskingAi(true);
+    setAiAnswer(null);
+    try {
+      const res = await fetch("/api/ask-meeting", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, question: aiQuestion, geminiApiKey: apiKey }),
+        signal: AbortSignal.timeout(60000),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not answer the question.");
+      if (typeof data.answer !== "string" || !data.answer.trim()) throw new Error("Gemini returned no answer.");
+      setAiAnswer(normalizeSpeakerMentions(data.answer, summary?.speakerNames ?? []));
+    } catch (error) { showToast(error instanceof Error ? error.message : "Could not answer the question."); }
+    finally { setAskingAi(false); }
+  }
+
+  function jumpToTime(atMs: number) {
+    if (!transcript.length) return;
+    const idx = transcript.reduce((best, t, i) => Math.abs(t.startMs - atMs) < Math.abs(transcript[best].startMs - atMs) ? i : best, 0);
+    setActiveTab("summary");
+    window.setTimeout(() => jumpToSegment(idx), 0);
   }
 
   const jsonStr = useMemo(() => JSON.stringify(result, null, 2), [result]);
   const filenameBase = summary ? slugForFilename(summary.title) : "meeting";
 
   // Data helpers
-  const meetingTitle = summary?.title || WIREFRAME_V2_METADATA.meetingTitle;
-  const heroHeading = isDemo
-    ? WIREFRAME_V2_METADATA.heroHeading
-    : summary?.title || "Meeting Summary & Intelligence";
-  const execSummary = summary?.executiveSummary || WIREFRAME_V2_RESULT.summary?.executiveSummary || "";
-  const decisionsCount = summary?.decisions.length ?? 2;
-  const actionItemsCount = summary?.actionItems.length ?? 3;
-  const speakersCount = distinctSpeakers.length > 0 ? distinctSpeakers.length : 3;
-  const durationLabel = WIREFRAME_V2_METADATA.durationFormatted;
+  const meetingTitle = summary?.title || "Meeting Results";
+  const heroHeading = summary?.title || (result.status === "no_speech" ? "No speech detected" : "Summary unavailable");
+  const execSummary = summary?.executiveSummary || result.summaryError || "Upload or record another audio file to try again.";
+  const decisionsCount = summary?.decisions.length ?? 0;
+  const actionItemsCount = summary?.actionItems.length ?? 0;
+  const completedItemsCount = (summary?.actionItems || []).filter((i) => i.status === "done" || i.status === "Done").length;
+  const speakersCount = distinctSpeakers.length;
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] text-zinc-900 font-sans antialiased">
+    <div className="relative min-h-screen bg-[#f8fafc] text-zinc-900 font-sans antialiased overflow-hidden pb-16">
+      {/* Background Aurora Orbs */}
+      <div className="pointer-events-none fixed -top-40 right-1/4 h-[500px] w-[700px] rounded-full bg-gradient-to-tr from-indigo-400/15 via-purple-400/10 to-pink-300/10 blur-3xl animate-aurora" />
+      <div className="pointer-events-none fixed top-1/2 -left-40 h-[450px] w-[450px] rounded-full bg-gradient-to-br from-cyan-400/10 via-indigo-300/10 to-transparent blur-3xl" />
+
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm text-white shadow-xl animate-fade-in">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-2xl animate-fade-in border border-zinc-700">
           <IconCheckCircle className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Hidden audio element for jump-to-audio playback */}
-      {audioAvailable && audioUrl && <audio ref={audioRef} src={audioUrl} className="hidden" />}
+      {audioAvailable && audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onLoadedMetadata={(e) => { const ms = e.currentTarget.duration * 1000; if (Number.isFinite(ms) && ms > 0 && ms !== result.audioDurationMs) onMeetingChange({ audioDurationMs: ms }); }}
+          onTimeUpdate={(e) => setCurrentTimeSec(e.currentTarget.currentTime)}
+          onEnded={() => setIsPlayingAudio(false)}
+          className="hidden"
+        />
+      )}
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        {/* TOP HEADER BAR */}
-        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200/80 bg-white/95 px-6 py-3.5 backdrop-blur-md">
-          {/* Left Title & Subtitle */}
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
-              title="Back to home"
-            >
-              ←
-            </Link>
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-xs">
-                <IconSparkles className="w-4 h-4" />
+      {/* TOP HEADER BAR */}
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-indigo-100/80 bg-white/85 px-6 py-3.5 backdrop-blur-md shadow-xs">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all shadow-2xs font-bold"
+            title="Back to home workspace"
+          >
+            ←
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20">
+              <IconSparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold tracking-tight text-zinc-900">
+                  {meetingTitle}
+                </h1>
+
               </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-zinc-900">Meeting Results</h1>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 mt-0.5">
-                  <span className="font-medium text-zinc-700">{meetingTitle}</span>
-                  <span className="text-zinc-300">|</span>
-                  <span className="flex items-center gap-1">
-                    <IconCalendar className="w-3 h-3 text-zinc-400" />
-                    {WIREFRAME_V2_METADATA.date}
-                  </span>
-                  <span className="text-zinc-300">|</span>
-                  <span className="flex items-center gap-1">
-                    <IconClock className="w-3 h-3 text-zinc-400" />
-                    {durationLabel}
-                  </span>
-                  <span className="text-zinc-300">|</span>
-                  <span className="flex items-center gap-1">
-                    <IconUsers className="w-3 h-3 text-zinc-400" />
-                    {speakersCount} speakers
-                  </span>
-                </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 mt-0.5">
+                <span className="flex items-center gap-1 font-medium text-zinc-600">
+                  <IconCalendar className="w-3.5 h-3.5 text-indigo-500" />
+                  {result.processedAt ? `Processed on ${new Date(result.processedAt).toLocaleDateString()}` : "Date unavailable"}
+                </span>
+                <span className="text-zinc-300">•</span>
+                <span className="flex items-center gap-1 font-medium text-zinc-600">
+                  <IconClock className="w-3.5 h-3.5 text-cyan-500" />
+                  {durationLabel}
+                </span>
+                <span className="text-zinc-300">•</span>
+                <span className="flex items-center gap-1 font-medium text-zinc-600">
+                  <IconUsers className="w-3.5 h-3.5 text-purple-500" />
+                  {speakersCount} speakers
+                </span>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Right Header Actions */}
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => showToast("Owner assigned")}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors shadow-2xs"
-            >
-              <span>Assign Owner</span>
-              <span className="text-[10px] text-zinc-400">⌵</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => showToast("Meeting marked as complete")}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors shadow-2xs"
-            >
-              <IconCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Mark Complete</span>
-            </button>
-            <div className="h-4 w-px bg-zinc-200 mx-1 hidden sm:block" />
-            <button
-              type="button"
-              onClick={() => showToast("Sending sync to connected tools...")}
-              className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 transition-colors shadow-xs"
-            >
-              <IconSend className="w-3.5 h-3.5" />
-              <span>Send / Sync</span>
-              <span className="text-[10px] text-zinc-400">⌵</span>
-            </button>
-          </div>
-        </header>
+        {/* Right Header Actions */}
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => { const owner = window.prompt("Meeting owner", result.meetingOwner ?? ""); if (owner !== null) onMeetingChange({ meetingOwner: owner.trim() }); }}
+            className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-300 transition-colors shadow-2xs"
+          >
+            <span>{result.meetingOwner || "Assign Owner"}</span>
+            <span className="text-[10px] text-zinc-400">⌵</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onMeetingChange({ reviewStatus: result.reviewStatus === "complete" ? "open" : "complete" })}
+            className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100/70 transition-colors shadow-2xs"
+          >
+            <IconCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{result.reviewStatus === "complete" ? "Reopen Meeting" : "Mark Complete"}</span>
+          </button>
+          <div className="h-4 w-px bg-zinc-200 mx-1 hidden sm:block" />
+          <button
+            type="button"
+            disabled title="Tool integrations are not connected"
+            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-1.5 text-xs font-semibold text-white hover:shadow-md hover:shadow-indigo-500/20 transition-all shadow-xs active:scale-95"
+          >
+            <IconSend className="w-3.5 h-3.5" />
+            <span>Sync to Tools</span>
+            <span className="text-[10px] text-purple-200">⌵</span>
+          </button>
+        </div>
+      </header>
 
-        {/* DASHBOARD GRID CONTENT */}
-        <main className="p-6 sm:p-8 max-w-[1440px] w-full mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* LEFT / CENTER COLUMN (8 cols) */}
-            <div className="lg:col-span-8 space-y-6">
-              {/* TOP ROW: HERO SUMMARY CARD + 4 STAT CARDS */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
-                {/* Hero Meeting Summary Card (7 cols) */}
-                <div className="md:col-span-7 relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white via-white to-zinc-50/60 p-6 shadow-xs flex flex-col justify-between">
-                  {/* Decorative background curve */}
-                  <div className="pointer-events-none absolute -right-10 -bottom-10 h-44 w-44 rounded-full bg-gradient-to-tr from-zinc-100/60 to-zinc-200/40 blur-2xl" />
+      {/* DASHBOARD GRID CONTENT */}
+      <main className="p-6 sm:p-8 max-w-[1440px] w-full mx-auto">
+        {result.warnings?.map((warning, i) => <p role="status" key={i} className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{warning}</p>)}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT / CENTER COLUMN (8 cols) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* TOP ROW: HERO SUMMARY CARD + 4 STAT CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
+              {/* Hero Meeting Summary Card (7 cols) */}
+              <div className="md:col-span-7 relative overflow-hidden rounded-2xl border border-indigo-100 bg-white/90 p-6 shadow-sm backdrop-blur-md flex flex-col justify-between hover:border-indigo-200 hover:shadow-md transition-all">
+                {/* Aurora gradient light shape in corner */}
+                <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-gradient-to-br from-indigo-500/20 via-purple-500/15 to-transparent blur-2xl" />
 
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100/90 px-3 py-1 text-xs font-semibold text-zinc-700">
-                      <IconSparkles className="w-3.5 h-3.5 text-zinc-900" />
-                      <span>Meeting Summary</span>
-                    </div>
-
-                    <h2 className="mt-3.5 text-lg sm:text-xl font-bold tracking-tight text-zinc-900 leading-snug">
-                      {heroHeading}
-                    </h2>
-
-                    <p className="mt-2.5 text-xs sm:text-sm text-zinc-600 leading-relaxed">{execSummary}</p>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/80 px-3 py-1 text-xs font-bold text-indigo-700">
+                    <IconSparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Executive Summary</span>
                   </div>
+
+                  <h2 className="mt-3.5 text-lg sm:text-xl font-bold tracking-tight text-zinc-900 leading-snug">
+                    {heroHeading}
+                  </h2>
+
+                  <p className="mt-2.5 text-xs sm:text-sm text-zinc-600 leading-relaxed font-normal">
+                    {execSummary}
+                  </p>
                 </div>
 
-                {/* 4 Stat Metric Tiles (5 cols, 2x2 grid) */}
-                <div className="md:col-span-5 grid grid-cols-2 gap-3">
-                  {/* Stat 1: Key Decisions */}
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs flex flex-col justify-between hover:border-zinc-300 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <IconCheckCircle className="w-5 h-5 text-zinc-700" />
-                      <span className="text-2xl font-bold text-zinc-900">{decisionsCount}</span>
-                    </div>
-                    <p className="mt-3 text-xs font-medium text-zinc-500">Key Decisions</p>
-                  </div>
-
-                  {/* Stat 2: Action Items */}
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs flex flex-col justify-between hover:border-zinc-300 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <IconList className="w-5 h-5 text-zinc-700" />
-                      <span className="text-2xl font-bold text-zinc-900">{actionItemsCount}</span>
-                    </div>
-                    <p className="mt-3 text-xs font-medium text-zinc-500">Action Items</p>
-                  </div>
-
-                  {/* Stat 3: Speakers */}
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs flex flex-col justify-between hover:border-zinc-300 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <IconUsers className="w-5 h-5 text-zinc-700" />
-                      <span className="text-2xl font-bold text-zinc-900">{speakersCount}</span>
-                    </div>
-                    <p className="mt-3 text-xs font-medium text-zinc-500">Speakers</p>
-                  </div>
-
-                  {/* Stat 4: Duration */}
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs flex flex-col justify-between hover:border-zinc-300 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <IconClock className="w-5 h-5 text-zinc-700" />
-                      <span className="text-xl font-bold text-zinc-900">{durationLabel}</span>
-                    </div>
-                    <p className="mt-3 text-xs font-medium text-zinc-500">Duration</p>
-                  </div>
+                <div className="mt-4 pt-3 border-t border-indigo-50 flex items-center justify-between text-xs text-indigo-700 font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {summary ? "AI-generated analysis" : "Analysis unavailable"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRetrySummary}
+                    disabled={retryingSummary || transcript.length === 0}
+                    className="hover:underline text-[11px] text-zinc-500 hover:text-indigo-600"
+                  >
+                    {retryingSummary ? "Generating…" : "Refresh"}
+                  </button>
                 </div>
               </div>
 
-              {/* VIEW TABS PILLS */}
-              <div className="flex items-center gap-1.5 rounded-xl border border-zinc-200/80 bg-white p-1 shadow-2xs w-fit">
+              {/* 4 Stat Metric Tiles (5 cols, 2x2 grid) */}
+              <div className="md:col-span-5 grid grid-cols-2 gap-3.5">
+                {/* Stat 1: Key Decisions */}
+                <div className="rounded-2xl border border-indigo-100/90 bg-white/90 p-4 shadow-2xs flex flex-col justify-between hover:border-indigo-200 hover:shadow-xs transition-all">
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                      <IconCheckCircle className="w-5 h-5" />
+                    </div>
+                    <span className="text-2xl font-extrabold text-zinc-900">{decisionsCount}</span>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-xs font-bold text-zinc-700">Key Decisions</p>
+                    <p className="text-[10px] text-emerald-600 font-medium">Identified in conversation</p>
+                  </div>
+                </div>
+
+                {/* Stat 2: Action Items */}
+                <div className="rounded-2xl border border-emerald-100/90 bg-white/90 p-4 shadow-2xs flex flex-col justify-between hover:border-emerald-200 hover:shadow-xs transition-all">
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                      <IconList className="w-5 h-5" />
+                    </div>
+                    <span className="text-2xl font-extrabold text-zinc-900">{actionItemsCount}</span>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-xs font-bold text-zinc-700">Action Items</p>
+                    <p className="text-[10px] text-emerald-600 font-medium">{completedItemsCount} done</p>
+                  </div>
+                </div>
+
+                {/* Stat 3: Speakers */}
+                <div className="rounded-2xl border border-purple-100/90 bg-white/90 p-4 shadow-2xs flex flex-col justify-between hover:border-purple-200 hover:shadow-xs transition-all">
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+                      <IconUsers className="w-5 h-5" />
+                    </div>
+                    <span className="text-2xl font-extrabold text-zinc-900">{speakersCount}</span>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-xs font-bold text-zinc-700">Participants</p>
+                    <p className="text-[10px] text-purple-600 font-medium">Detected in transcript</p>
+                  </div>
+                </div>
+
+                {/* Stat 4: Duration */}
+                <div className="rounded-2xl border border-cyan-100/90 bg-white/90 p-4 shadow-2xs flex flex-col justify-between hover:border-cyan-200 hover:shadow-xs transition-all">
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 border border-cyan-100">
+                      <IconClock className="w-5 h-5" />
+                    </div>
+                    <span className="text-xl font-extrabold text-zinc-900">{durationLabel}</span>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-xs font-bold text-zinc-700">Audio Length</p>
+                    <p className="text-[10px] text-cyan-600 font-medium">{result.audioDurationMs ? "Audio metadata" : "Transcript estimate"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AUDIO EQUALIZER / WAVEFORM PLAYER BAR */}
+            <div className="rounded-2xl border border-indigo-100 bg-white/90 p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setActiveTab("summary")}
-                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all ${
-                    activeTab === "summary"
-                      ? "bg-zinc-800 text-white shadow-xs"
-                      : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
-                  }`}
+                  disabled={!audioAvailable} onClick={toggleAudioPlayback}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95"
                 >
-                  <IconDocumentText className="w-3.5 h-3.5" />
-                  <span>Summary</span>
+                  {isPlayingAudio ? (
+                    <span className="font-bold text-xs">❚❚</span>
+                  ) : (
+                    <span className="font-bold text-xs ml-0.5">▶</span>
+                  )}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("transcript")}
-                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all ${
-                    activeTab === "transcript"
-                      ? "bg-zinc-800 text-white shadow-xs"
-                      : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
-                  }`}
-                >
-                  <IconMessageSquare className="w-3.5 h-3.5" />
-                  <span>Transcript</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("insights")}
-                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all ${
-                    activeTab === "insights"
-                      ? "bg-zinc-800 text-white shadow-xs"
-                      : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
-                  }`}
-                >
-                  <IconBarChart className="w-3.5 h-3.5" />
-                  <span>Insights</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("json")}
-                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all ${
-                    activeTab === "json"
-                      ? "bg-zinc-800 text-white shadow-xs"
-                      : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
-                  }`}
-                >
-                  <IconCode className="w-3.5 h-3.5" />
-                  <span>JSON</span>
-                </button>
+                <div>
+                  <p className="text-xs font-bold text-zinc-900">Meeting Audio Playback</p>
+                  <p className="text-[11px] font-mono text-zinc-500">
+                    {formatClock(currentTimeSec * 1000)} / {durationLabel}
+                  </p>
+                </div>
               </div>
 
-              {/* JSON VIEW TAB */}
-              {activeTab === "json" && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs">
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-                    <span className="font-mono text-xs font-semibold text-zinc-700">Raw Meeting JSON</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(jsonStr);
-                        showToast("JSON copied to clipboard");
-                      }}
-                      className="rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
-                    >
-                      Copy JSON
-                    </button>
-                  </div>
-                  <pre className="mt-3 max-h-[500px] overflow-auto rounded-xl bg-zinc-900 p-4 text-xs font-mono text-zinc-100 leading-relaxed">
-                    {jsonStr}
-                  </pre>
+              <progress aria-label="Audio playback progress" value={currentTimeSec} max={durationMs > 0 ? durationMs / 1000 : 1} className="h-2 flex-1 accent-indigo-600" />
+              <div className="flex flex-wrap gap-2">
+                {(summary?.keyMoments ?? []).map((moment, i) => <button type="button" key={i} onClick={() => jumpToTime(moment.atMs)} className="text-xs text-indigo-600">{formatClock(moment.atMs)} · {moment.title}</button>)}
+              </div>
+            </div>
+
+            {/* TAB SELECTOR */}
+            <div className="flex items-center gap-2 border-b border-indigo-100 pb-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab("summary")}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  activeTab === "summary"
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+              >
+                <IconDocumentText className="w-3.5 h-3.5" />
+                <span>Summary & Actions</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("transcript")}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  activeTab === "transcript"
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+              >
+                <IconMessageSquare className="w-3.5 h-3.5" />
+                <span>Diarized Transcript</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("insights")}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  activeTab === "insights"
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+              >
+                <IconBarChart className="w-3.5 h-3.5" />
+                <span>Deep Insights</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("json")}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  activeTab === "json"
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+              >
+                <IconCode className="w-3.5 h-3.5" />
+                <span>Raw JSON</span>
+              </button>
+            </div>
+
+            {/* JSON VIEW TAB */}
+            {activeTab === "json" && (
+              <div className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                  <span className="font-mono text-xs font-bold text-zinc-700">Raw Meeting JSON Output</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void copyText(jsonStr, "JSON copied to clipboard");
+                    }}
+                    className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
+                  >
+                    Copy JSON
+                  </button>
                 </div>
-              )}
+                <pre className="mt-3 max-h-[500px] overflow-auto rounded-xl bg-zinc-900 p-4 text-xs font-mono text-zinc-100 leading-relaxed">
+                  {jsonStr}
+                </pre>
+              </div>
+            )}
 
-              {/* SUMMARY CARD (4 Quadrants) */}
-              {(activeTab === "summary" || activeTab === "insights") && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs">
-                  <div className="flex items-center gap-2 mb-5">
-                    <IconDocumentText className="w-5 h-5 text-zinc-900" />
-                    <h3 className="font-bold text-base text-zinc-900">Summary</h3>
+            {/* SUMMARY CARD (4 Quadrants) */}
+            {(activeTab === "summary" || activeTab === "insights") && (
+              <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xs">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
+                      <IconDocumentText className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-bold text-base text-zinc-900">Meeting Takeaways</h3>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Quadrant 1: Key Discussion Points */}
-                    <div className="rounded-xl border border-zinc-100 bg-[#f8fafc] p-4 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 mb-2.5">
-                          <IconTarget className="w-4 h-4 text-zinc-700" />
-                          <span>Key Discussion Points</span>
-                        </div>
-                        <ul className="space-y-2 text-xs text-zinc-600">
-                          {(summary?.discussions || WIREFRAME_V2_RESULT.summary!.discussions).map((pt, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-zinc-400 mt-0.5">•</span>
-                              <span className="leading-relaxed">{pt}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-
-                    {/* Quadrant 2: Decisions Made */}
-                    <div className="rounded-xl border border-zinc-100 bg-[#f8fafc] p-4 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 mb-2.5">
-                          <IconCheckCircle className="w-4 h-4 text-zinc-700" />
-                          <span>Decisions Made</span>
-                        </div>
-                        <ul className="space-y-2 text-xs text-zinc-600">
-                          {(summary?.decisions || WIREFRAME_V2_RESULT.summary!.decisions).map((dec, i) => (
-                            <li key={i} className="flex items-start justify-between gap-2 group">
-                              <div className="flex items-start gap-2">
-                                <span className="text-zinc-400 mt-0.5">•</span>
-                                <span className="leading-relaxed">{dec.text}</span>
-                              </div>
-                              {dec.atMs !== undefined && (
-                                <button
-                                  type="button"
-                                  onClick={() => jumpToSegment(3)}
-                                  className="text-[11px] font-medium text-blue-600 hover:underline shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  View
-                                </button>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-
-                    {/* Quadrant 3: Risks / Blockers */}
-                    <div className="rounded-xl border border-zinc-100 bg-[#f8fafc] p-4 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 mb-2.5">
-                          <IconAlertTriangle className="w-4 h-4 text-zinc-700" />
-                          <span>Risks / Blockers</span>
-                        </div>
-                        <ul className="space-y-2 text-xs text-zinc-600">
-                          {(summary?.risks || WIREFRAME_V2_RESULT.summary!.risks).map((r, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-zinc-400 mt-0.5">•</span>
-                              <span className="leading-relaxed">{r.text}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-
-                    {/* Quadrant 4: Next Steps */}
-                    <div className="rounded-xl border border-zinc-100 bg-[#f8fafc] p-4 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 mb-2.5">
-                          <IconChevronsRight className="w-4 h-4 text-zinc-700" />
-                          <span>Next Steps</span>
-                        </div>
-                        <ul className="space-y-2 text-xs text-zinc-600">
-                          {(summary?.nextSteps || WIREFRAME_V2_RESULT.summary!.nextSteps).map((ns, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-zinc-400 mt-0.5">•</span>
-                              <span className="leading-relaxed">{ns}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+                  <span className="text-xs text-zinc-400">Structured 4-Quadrant View</span>
                 </div>
-              )}
 
-              {/* ACTION ITEMS TABLE CARD */}
-              {(activeTab === "summary" || activeTab === "insights") && (
-                <div id="action-items-section" className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs">
-                  {/* Card Header & Tools */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <IconList className="w-5 h-5 text-zinc-900" />
-                      <h3 className="font-bold text-base text-zinc-900">
-                        Action Items ({summary?.actionItems.length ?? 3})
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowAddActionItemModal(true)}
-                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors shadow-2xs"
-                      >
-                        <span>+ Add Item</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => showToast("Action items synced to Jira!")}
-                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors shadow-2xs"
-                      >
-                        <IconJira className="w-3 h-3 text-blue-600" />
-                        <span>Sync to Jira</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => showToast("Action items synced to Notion!")}
-                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors shadow-2xs"
-                      >
-                        <IconNotion className="w-3 h-3 text-zinc-900" />
-                        <span>Sync to Notion</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => showToast("More options")}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-50"
-                      >
-                        ⋮
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Action Items Data Table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[620px] text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-zinc-200 text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
-                          <th className="py-2.5 pr-2 w-8">
-                            <input type="checkbox" className="rounded border-zinc-300 text-zinc-900" />
-                          </th>
-                          <th className="py-2.5 pr-4">Assignee</th>
-                          <th className="py-2.5 pr-4">Task</th>
-                          <th className="py-2.5 pr-4">Deadline</th>
-                          <th className="py-2.5 pr-4">Priority</th>
-                          <th className="py-2.5 pr-3">Status</th>
-                          <th className="py-2.5 w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-100">
-                        {(summary?.actionItems || WIREFRAME_V2_RESULT.summary!.actionItems).map((item, idx) => {
-                          const isDone = item.status === "done" || item.status === "Done";
-                          const priority = item.priority || "Medium";
-
-                          return (
-                            <tr key={idx} className="hover:bg-zinc-50/60 transition-colors">
-                              {/* Checkbox */}
-                              <td className="py-3 pr-2">
-                                <input
-                                  type="checkbox"
-                                  checked={isDone}
-                                  onChange={() => handleToggleActionItem(idx)}
-                                  className="rounded border-zinc-300 text-zinc-900 focus:ring-0 cursor-pointer"
-                                />
-                              </td>
-
-                              {/* Assignee */}
-                              <td className="py-3 pr-4 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5 text-zinc-700 font-medium">
-                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-200 text-[10px] font-semibold text-zinc-700">
-                                    {item.assignee.slice(0, 2)}
-                                  </div>
-                                  <span>{displaySpeaker(item.assignee, summary?.speakerNames || [])}</span>
-                                </div>
-                              </td>
-
-                              {/* Task */}
-                              <td className="py-3 pr-4 max-w-xs break-words">
-                                <span className={isDone ? "text-zinc-400 line-through" : "text-zinc-900 font-medium"}>
-                                  {item.task}
-                                </span>
-                              </td>
-
-                              {/* Deadline */}
-                              <td className="py-3 pr-4 whitespace-nowrap text-zinc-600">
-                                <div className="flex items-center gap-1">
-                                  <IconCalendar className="w-3 h-3 text-zinc-400" />
-                                  <span>{item.deadline}</span>
-                                </div>
-                              </td>
-
-                              {/* Priority */}
-                              <td className="py-3 pr-4 whitespace-nowrap">
-                                <span
-                                  className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                                    priority === "High"
-                                      ? "bg-rose-50 text-rose-700 border border-rose-200/80"
-                                      : priority === "Medium"
-                                      ? "bg-amber-50 text-amber-700 border border-amber-200/80"
-                                      : "bg-zinc-100 text-zinc-700 border border-zinc-200"
-                                  }`}
-                                >
-                                  {priority}
-                                </span>
-                              </td>
-
-                              {/* Status */}
-                              <td className="py-3 pr-3 whitespace-nowrap">
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleActionItem(idx)}
-                                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                                    isDone
-                                      ? "bg-emerald-50 text-emerald-700"
-                                      : item.status === "In Progress"
-                                      ? "bg-blue-50 text-blue-700"
-                                      : "bg-zinc-100 text-zinc-700"
-                                  }`}
-                                >
-                                  <span
-                                    className={`h-1.5 w-1.5 rounded-full ${
-                                      isDone ? "bg-emerald-500" : item.status === "In Progress" ? "bg-blue-500" : "bg-zinc-400"
-                                    }`}
-                                  />
-                                  <span>{isDone ? "Done" : item.status || "To Do"}</span>
-                                </button>
-                              </td>
-
-                              {/* Actions menu */}
-                              <td className="py-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => showToast(`Options for "${item.task}"`)}
-                                  className="text-zinc-400 hover:text-zinc-600 text-xs px-1"
-                                >
-                                  ···
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* TRANSCRIPT CARD */}
-              {(activeTab === "summary" || activeTab === "transcript") && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <IconMessageSquare className="w-5 h-5 text-zinc-900" />
-                      <h3 className="font-bold text-base text-zinc-900">Transcript</h3>
-                    </div>
-
-                    {/* Filter and search bar matching wireframe */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Search transcript */}
-                      <div className="relative">
-                        <input
-                          type="search"
-                          value={transcriptQuery}
-                          onChange={(e) => setTranscriptQuery(e.target.value)}
-                          placeholder="Search transcript..."
-                          className="h-8 rounded-lg border border-zinc-200 bg-white pl-8 pr-3 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none w-48"
-                        />
-                        <span className="absolute left-2.5 top-2 text-zinc-400 text-xs">🔍</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Quadrant 1: Key Discussion Points */}
+                  <div className="rounded-2xl border border-cyan-100 bg-cyan-50/30 p-4.5 flex flex-col justify-between hover:border-cyan-200 transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs font-bold text-cyan-900 uppercase tracking-wider mb-3">
+                        <span className="flex h-2 w-2 rounded-full bg-cyan-500" />
+                        <span>Key Discussion Points</span>
                       </div>
-
-                      {/* Speaker Filter dropdown */}
-                      <select
-                        value={speakerFilter}
-                        onChange={(e) => setSpeakerFilter(e.target.value)}
-                        className="h-8 rounded-lg border border-zinc-200 bg-white px-2.5 text-xs text-zinc-700 focus:outline-none"
-                      >
-                        <option value="all">All Speakers ⌵</option>
-                        {distinctSpeakers.map((spk) => (
-                          <option key={spk} value={spk}>
-                            {displaySpeaker(spk, summary?.speakerNames || [])}
-                          </option>
+                      <ul className="space-y-2.5 text-xs text-zinc-700">
+                        {(summary?.discussions ?? []).map((pt, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-cyan-600 font-bold shrink-0 mt-0.5">•</span>
+                            <span className="leading-relaxed font-medium">{pt}</span>
+                          </li>
                         ))}
-                      </select>
-
-                      {/* Important Only Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => setImportantOnly(!importantOnly)}
-                        className={`flex items-center gap-1.5 h-8 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
-                          importantOnly
-                            ? "border-amber-300 bg-amber-50 text-amber-800"
-                            : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
-                        }`}
-                      >
-                        <IconStar filled={importantOnly} className="w-3.5 h-3.5" />
-                        <span>Important Only</span>
-                      </button>
-
-                      {/* Download button */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          downloadTextFile(
-                            `${filenameBase}-transcript.txt`,
-                            "text/plain",
-                            transcript.map((t) => `[${formatClock(t.startMs)}] ${t.speaker}: ${t.text}`).join("\n\n"),
-                          )
-                        }
-                        title="Download transcript"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-50"
-                      >
-                        ↓
-                      </button>
+                        {!summary?.discussions.length && <li>No discussion points identified.</li>}
+                      </ul>
                     </div>
                   </div>
 
-                  {/* Transcript Items List */}
-                  <div className="space-y-3 mt-4 divide-y divide-zinc-50">
-                    {filteredTranscript.length === 0 ? (
-                      <p className="py-6 text-center text-xs text-zinc-500">No transcript lines match this filter.</p>
-                    ) : (
-                      filteredTranscript.map(({ seg, idx }) => {
-                        const isStarred = starredIndices.has(idx);
-                        return (
-                          <div
-                            key={idx}
-                            id={`seg-${idx}`}
-                            className={`pt-3 first:pt-0 flex items-start gap-3 p-2 rounded-xl transition-colors ${
-                              isStarred ? "bg-amber-50/40" : "hover:bg-zinc-50/60"
-                            }`}
-                          >
-                            {/* Timestamp */}
-                            <span className="font-mono text-xs text-zinc-400 shrink-0 mt-0.5">
-                              {formatClock(seg.startMs)}
-                            </span>
-
-                            {/* Speaker badge */}
-                            <span className="shrink-0 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
-                              {displaySpeaker(seg.speaker, summary?.speakerNames || [])}
-                            </span>
-
-                            {/* Content */}
-                            <p className="flex-1 text-xs text-zinc-700 leading-relaxed break-words">{seg.text}</p>
-
-                            {/* Audio Play button if audio is available */}
-                            {audioAvailable && (
+                  {/* Quadrant 2: Decisions Made */}
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4.5 flex flex-col justify-between hover:border-emerald-200 transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-900 uppercase tracking-wider mb-3">
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+                        <span>Decisions Made</span>
+                      </div>
+                      <ul className="space-y-2.5 text-xs text-zinc-700">
+                        {(summary?.decisions ?? []).map((dec, i) => (
+                          <li key={i} className="flex items-start justify-between gap-2 group">
+                            <div className="flex items-start gap-2">
+                              <span className="text-emerald-600 font-bold shrink-0 mt-0.5">✓</span>
+                              <span className="leading-relaxed font-medium">{dec.text}</span>
+                            </div>
+                            {dec.atMs !== undefined && (
                               <button
                                 type="button"
-                                onClick={() => jumpToSegment(idx)}
-                                className="text-[11px] text-blue-600 hover:underline shrink-0"
+                                onClick={() => jumpToTime(dec.atMs!)}
+                                className="text-[11px] font-bold text-indigo-600 hover:underline shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
                               >
-                                Play
+                                {formatClock(dec.atMs)} ▶
                               </button>
                             )}
+                          </li>
+                        ))}
+                        {!summary?.decisions.length && <li>No decisions identified.</li>}
+                      </ul>
+                    </div>
+                  </div>
 
-                            {/* Star Icon to toggle important */}
+                  {/* Quadrant 3: Risks / Blockers */}
+                  <div className="rounded-2xl border border-rose-100 bg-rose-50/30 p-4.5 flex flex-col justify-between hover:border-rose-200 transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs font-bold text-rose-900 uppercase tracking-wider mb-3">
+                        <span className="flex h-2 w-2 rounded-full bg-rose-500" />
+                        <span>Risks / Blockers</span>
+                      </div>
+                      <ul className="space-y-2.5 text-xs text-zinc-700">
+                        {(summary?.risks ?? []).map((risk, i) => <li key={i}>{risk.text}</li>)}
+                        {!summary?.risks.length && <li>No risks identified.</li>}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Quadrant 4: Next Steps */}
+                  <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-4.5 flex flex-col justify-between hover:border-indigo-200 transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs font-bold text-indigo-900 uppercase tracking-wider mb-3">
+                        <span className="flex h-2 w-2 rounded-full bg-indigo-500" />
+                        <span>Next Milestones</span>
+                      </div>
+                      <ul className="space-y-2.5 text-xs text-zinc-700">
+                        {(summary?.nextSteps ?? []).map((step, i) => <li key={i}>{step}</li>)}
+                        {!summary?.nextSteps.length && <li>No next steps identified.</li>}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ACTION ITEMS CARD & TABLE */}
+            {(activeTab === "summary" || activeTab === "insights") && (
+              <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                      <IconList className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base text-zinc-900">Action Items</h3>
+                      <p className="text-xs text-zinc-500">Assignee and priority tracker</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={!summary} onClick={() => setShowAddActionItemModal(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-indigo-50 border border-indigo-200/80 px-3.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100/70 transition-colors shadow-2xs"
+                  >
+                    <span>+ Add Task</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-100 text-zinc-400 font-bold uppercase tracking-wider">
+                        <th className="py-2.5 pr-2 w-8">Done</th>
+                        <th className="py-2.5 pr-4">Assignee</th>
+                        <th className="py-2.5 pr-4">Task Description</th>
+                        <th className="py-2.5 pr-4">Deadline</th>
+                        <th className="py-2.5 pr-4">Priority</th>
+                        <th className="py-2.5 pr-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {(summary?.actionItems ?? []).map((item, idx) => {
+                        const isDone = item.status === "done" || item.status === "Done";
+                        const priority = item.priority || "Medium";
+
+                        return (
+                          <tr key={idx} className="hover:bg-indigo-50/30 transition-colors">
+                            <td className="py-3 pr-2">
+                              <input
+                                type="checkbox"
+                                checked={isDone}
+                                onChange={() => handleToggleActionItem(idx)}
+                                className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                              />
+                            </td>
+                            <td className="py-3 pr-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2 text-zinc-800 font-semibold">
+                                <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-2xs ${
+                                  idx % 3 === 0
+                                    ? "bg-gradient-to-tr from-indigo-500 to-purple-600"
+                                    : idx % 3 === 1
+                                    ? "bg-gradient-to-tr from-cyan-500 to-blue-600"
+                                    : "bg-gradient-to-tr from-amber-500 to-orange-600"
+                                }`}>
+                                  {item.assignee.slice(-2)}
+                                </div>
+                                <span>{displaySpeaker(item.assignee, summary?.speakerNames || [])}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 pr-4 max-w-xs break-words">
+                              <span className={isDone ? "text-zinc-400 line-through" : "text-zinc-900 font-medium"}>
+                                {item.task}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4 whitespace-nowrap text-zinc-600">
+                              <div className="flex items-center gap-1.5 font-medium">
+                                <IconCalendar className="w-3.5 h-3.5 text-zinc-400" />
+                                <span>{item.deadline}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 pr-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                  priority === "High"
+                                    ? "bg-rose-50 text-rose-700 border border-rose-200/80"
+                                    : priority === "Medium"
+                                    ? "bg-amber-50 text-amber-700 border border-amber-200/80"
+                                    : "bg-zinc-100 text-zinc-700 border border-zinc-200"
+                                }`}
+                              >
+                                {priority}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-3 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleActionItem(idx)}
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                                  isDone
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
+                                    : "bg-indigo-50 text-indigo-700 border border-indigo-200/80"
+                                }`}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${isDone ? "bg-emerald-500" : "bg-indigo-500"}`} />
+                                <span>{isDone ? "Done" : "Pending"}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {!summary?.actionItems.length && <tr><td colSpan={6} className="py-4 text-zinc-500">No action items identified.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {(activeTab === "summary" || activeTab === "insights") && (
+              <section className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xs">
+                <h3 className="mb-3 font-bold">Open Questions</h3>
+                <ul className="space-y-2 text-sm text-zinc-600">
+                  {(summary?.unresolvedQuestions ?? []).map((question, i) => <li key={i}>{question.text}{question.atMs !== undefined && <button type="button" onClick={() => jumpToTime(question.atMs!)} className="ml-2 text-indigo-600">{formatClock(question.atMs)} ▶</button>}</li>)}
+                  {!summary?.unresolvedQuestions.length && <li>No open questions identified.</li>}
+                </ul>
+              </section>
+            )}
+
+            {/* TRANSCRIPT CARD */}
+            {(activeTab === "summary" || activeTab === "transcript") && (
+              <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
+                      <IconMessageSquare className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base text-zinc-900">Diarized Transcript</h3>
+                      <p className="text-xs text-zinc-500">Synchronized speech-to-text with timestamp markers</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      id="transcript-search-input"
+                      name="transcriptSearch"
+                      type="search"
+                      value={transcriptQuery}
+                      onChange={(e) => setTranscriptQuery(e.target.value)}
+                      placeholder="Search dialogue…"
+                      className="h-8 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none w-44"
+                    />
+
+                    <select
+                      id="speaker-filter-select"
+                      name="speakerFilter"
+                      value={speakerFilter}
+                      onChange={(e) => setSpeakerFilter(e.target.value)}
+                      className="h-8 rounded-xl border border-zinc-200 bg-zinc-50/50 px-2.5 text-xs text-zinc-700 font-medium focus:outline-none"
+                    >
+                      <option value="all">All Speakers</option>
+                      {distinctSpeakers.map((spk) => (
+                        <option key={spk} value={spk}>
+                          {displaySpeaker(spk, summary?.speakerNames || [])}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => setImportantOnly(!importantOnly)}
+                      className={`h-8 rounded-xl px-2.5 text-xs font-semibold border transition-colors ${
+                        importantOnly
+                          ? "bg-amber-50 text-amber-800 border-amber-300"
+                          : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
+                      }`}
+                    >
+                      ★ Starred
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mt-4">
+                  {filteredTranscript.map(({ seg, idx }) => {
+                    const isStarred = starredIndices.has(idx);
+                    const speakerColor =
+                      idx % 3 === 0
+                        ? "text-indigo-700 bg-indigo-50 border-indigo-200"
+                        : idx % 3 === 1
+                        ? "text-cyan-700 bg-cyan-50 border-cyan-200"
+                        : "text-amber-700 bg-amber-50 border-amber-200";
+
+                    return (
+                      <div
+                        key={idx}
+                        id={`seg-${idx}`}
+                        className={`rounded-xl border p-4 transition-all ${
+                          isStarred
+                            ? "border-amber-200 bg-amber-50/30 shadow-2xs"
+                            : "border-zinc-100 bg-[#f8fafc]/70 hover:bg-white hover:border-indigo-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold border ${speakerColor}`}>
+                              {displaySpeaker(seg.speaker, summary?.speakerNames || [])}
+                            </span>
+                            <span className="font-mono text-xs text-zinc-400">
+                              {formatClock(seg.startMs)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => jumpToSegment(idx)}
+                              className="rounded-md bg-white border border-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50 transition-colors"
+                            >
+                              {audioAvailable ? "▶ Play" : "View segment"}
+                            </button>
                             <button
                               type="button"
                               onClick={() => toggleStar(idx)}
-                              className="shrink-0 text-zinc-300 hover:text-amber-500 p-0.5"
-                              title={isStarred ? "Remove star" : "Mark as important"}
+                              className="p-1 text-zinc-400 hover:text-amber-500"
+                              title={isStarred ? "Remove star" : "Mark important"}
                             >
                               <IconStar filled={isStarred} className="w-4 h-4" />
                             </button>
                           </div>
-                        );
-                      })
-                    )}
-                  </div>
+                        </div>
+
+                        <p className="text-xs leading-relaxed text-zinc-700 font-normal">{seg.text}</p>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT COLUMN RAIL (4 cols) */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* QUICK ACTIONS CARD */}
+            <div className="rounded-2xl border border-indigo-100 bg-white/95 p-5 shadow-xs">
+              <div className="flex items-center gap-2 mb-3.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
+                  <IconLightning className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-sm text-zinc-900">Quick Actions</h3>
+              </div>
+
+              <div className="space-y-1.5 text-xs font-semibold text-zinc-700">
+                <button
+                  type="button"
+                  disabled={!summary} onClick={() => {
+                    if (summary) void copyText(toSummaryText(summary), "Summary copied to clipboard!");
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 hover:bg-indigo-50/60 hover:border-indigo-200 hover:text-indigo-700 transition-all text-left"
+                >
+                  <IconDocumentText className="w-4 h-4 text-zinc-400" />
+                  <span>Copy Formatted Summary</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!summary} onClick={() => setShowEmailModal(true)}
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 hover:bg-indigo-50/60 hover:border-indigo-200 hover:text-indigo-700 transition-all text-left"
+                >
+                  <span className="text-zinc-400">✉️</span>
+                  <span>Draft Follow-up Email</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!transcript.length} onClick={() => setShowAskAiModal(true)}
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 px-3.5 py-2.5 hover:bg-indigo-100/70 text-indigo-800 transition-all text-left font-bold"
+                >
+                  <IconSparkles className="w-4 h-4 text-indigo-600" />
+                  <span>Ask AI Assistant</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => downloadTextFile(`${filenameBase}.json`, "application/json", jsonStr)}
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 hover:bg-zinc-50 transition-colors text-left font-medium text-zinc-600"
+                >
+                  <IconCode className="w-4 h-4 text-zinc-400" />
+                  <span>Export JSON</span>
+                </button>
+              </div>
             </div>
 
-            {/* RIGHT COLUMN RAIL (4 cols) */}
-            <div className="lg:col-span-4 space-y-6">
-              {/* QUICK ACTIONS CARD */}
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center gap-2 mb-3.5">
-                  <IconLightning className="w-4 h-4 text-zinc-900" />
-                  <h3 className="font-bold text-sm text-zinc-900">Quick Actions</h3>
+            {/* SPEAKER BREAKDOWN DONUT CARD */}
+            <div className="rounded-2xl border border-indigo-100 bg-white/95 p-5 shadow-xs">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
+                  <IconUsers className="w-4 h-4" />
                 </div>
-
-                <div className="space-y-1.5 text-xs font-medium text-zinc-700">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (summary) navigator.clipboard.writeText(toSummaryText(summary));
-                      showToast("Summary copied to clipboard!");
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left"
-                  >
-                    <IconDocumentText className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Copy Summary</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      showToast("Meeting link copied to clipboard!");
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left"
-                  >
-                    <IconUsers className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Share</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.print();
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left"
-                  >
-                    <IconDocumentText className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Export PDF</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => downloadTextFile(`${filenameBase}.json`, "application/json", jsonStr)}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left"
-                  >
-                    <IconCode className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Export JSON</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleRetrySummary}
-                    disabled={retryingSummary}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left disabled:opacity-50"
-                  >
-                    <span className="text-zinc-500">🔄</span>
-                    <span>{retryingSummary ? "Regenerating…" : "Regenerate Summary"}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => showToast("Translating to Japanese, Vietnamese & French coming soon!")}
-                    className="flex w-full items-center justify-between rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-zinc-500">文A</span>
-                      <span>Translate</span>
-                    </div>
-                    <span className="text-zinc-400 text-[10px]">›</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailModal(true)}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left"
-                  >
-                    <span className="text-zinc-500">✉️</span>
-                    <span>Create Follow-up Email</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (summary) navigator.clipboard.writeText(toActionItemsText(summary));
-                      showToast("Tasks copied to clipboard!");
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left"
-                  >
-                    <IconCheckCircle className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Create Tasks</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowAskAiModal(true)}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-zinc-200/70 bg-white px-3 py-2 hover:bg-zinc-50 transition-colors text-left"
-                  >
-                    <IconMessageSquare className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Ask AI Follow-up</span>
-                  </button>
-                </div>
+                <h3 className="font-bold text-sm text-zinc-900">Speaker Contribution {hasTiming ? "(estimated time)" : "(text share)"}</h3>
               </div>
 
-              {/* AI INSIGHTS / THEMES CARD */}
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center justify-between mb-3.5">
-                  <div className="flex items-center gap-2">
-                    <IconSparkles className="w-4 h-4 text-zinc-900" />
-                    <h3 className="font-bold text-sm text-zinc-900">AI Insights / Themes</h3>
-                  </div>
-                  <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold text-zinc-700">AI</span>
-                </div>
+              {!transcript.length && <p className="text-xs text-zinc-500">No speech data available.</p>}
+              <div className="flex flex-col sm:flex-row items-center justify-around gap-4">
+                <DonutChart breakdown={speakerBreakdownData} totalLabel={hasTiming ? formatClock(transcript.reduce((sum, t) => sum + t.endMs! - t.startMs, 0)) : `${distinctSpeakers.length} speakers`} totalCaption={hasTiming ? "Speaking time (est.)" : "Text share"} />
 
-                {/* Themes tags */}
-                <div className="flex flex-wrap gap-1.5 mb-4">
-                  {WIREFRAME_V2_METADATA.themes.map((theme, i) => (
-                    <span
-                      key={i}
-                      className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-700"
-                    >
-                      {theme}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Key Takeaways */}
-                <div>
-                  <p className="text-xs font-semibold text-zinc-900 mb-2">Key Takeaways</p>
-                  <ul className="space-y-2 text-xs text-zinc-600">
-                    {WIREFRAME_V2_METADATA.keyTakeaways.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                        <span className="leading-relaxed">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* SPEAKER BREAKDOWN DONUT CARD */}
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center gap-2 mb-4">
-                  <IconUsers className="w-4 h-4 text-zinc-900" />
-                  <h3 className="font-bold text-sm text-zinc-900">Speaker Breakdown</h3>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center justify-around gap-4">
-                  <DonutChart breakdown={speakerBreakdownData} totalLabel="32 min" />
-
-                  {/* Legend */}
-                  <div className="space-y-2 text-xs">
-                    {speakerBreakdownData.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                        <span className="font-medium text-zinc-700">{item.speaker}</span>
-                        <span className="text-zinc-400">
-                          {item.percentage}% ({item.duration})
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* TIMELINE / KEY MOMENTS CARD */}
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center gap-2 mb-4">
-                  <IconClock className="w-4 h-4 text-zinc-900" />
-                  <h3 className="font-bold text-sm text-zinc-900">Timeline / Key Moments</h3>
-                </div>
-
-                {/* Horizontal Progress Timeline */}
-                <div className="relative pt-2 pb-1">
-                  {/* Connecting line */}
-                  <div className="absolute top-4 left-2 right-2 h-0.5 bg-zinc-200" />
-
-                  <div className="relative flex justify-between">
-                    {WIREFRAME_V2_METADATA.timelineMoments.map((m, i) => (
-                      <div key={i} className="flex flex-col items-center text-center max-w-[70px]">
-                        {/* Dot */}
-                        <div className="h-4 w-4 rounded-full border-2 border-white bg-zinc-800 shadow-xs z-10 mb-2" />
-                        <span className="font-mono text-[10px] font-semibold text-zinc-900">{m.time}</span>
-                        <span className="text-[10px] text-zinc-500 leading-tight mt-0.5">{m.title}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* DETECTED QUESTIONS / UNRESOLVED ITEMS */}
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center gap-2 mb-3.5">
-                  <IconHelpCircle className="w-4 h-4 text-zinc-900" />
-                  <h3 className="font-bold text-sm text-zinc-900">Detected Questions / Unresolved Items</h3>
-                </div>
-
-                <div className="space-y-2.5 text-xs">
-                  {(summary?.unresolvedQuestions || WIREFRAME_V2_RESULT.summary!.unresolvedQuestions).map((q, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start justify-between gap-2 rounded-lg border border-zinc-100 bg-[#f8fafc] p-2.5"
-                    >
-                      <div className="flex items-start gap-2">
-                        <span className="text-zinc-400">•</span>
-                        <span className="text-zinc-700 leading-relaxed">{q.text}</span>
-                      </div>
-                      <span className="shrink-0 rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-zinc-600">
-                        Open
+                <div className="space-y-2 text-xs w-full sm:w-auto">
+                  {speakerBreakdownData.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between sm:justify-start gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="font-bold text-zinc-700">{item.speaker}</span>
+                      <span className="text-zinc-400 font-mono text-[11px]">
+                        {item.percentage}% ({item.duration})
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* FOLLOW-UP RECOMMENDATIONS CARD */}
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center gap-2 mb-3">
-                  <IconLightbulb className="w-4 h-4 text-zinc-900" />
-                  <h3 className="font-bold text-sm text-zinc-900">Follow-Up Recommendations</h3>
+            {/* AI THEMES / INSIGHTS CARD */}
+            <div className="rounded-2xl border border-indigo-100 bg-white/95 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
+                    <IconSparkles className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-sm text-zinc-900">Key Themes & Tags</h3>
                 </div>
+                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
+                  {summary ? "AI-generated tags" : "Unavailable"}
+                </span>
+              </div>
 
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {!summary?.themes.length && <p className="text-xs text-zinc-500">No themes identified.</p>}
+                {(summary?.themes ?? []).map((theme, i) => (
+                  <span
+                    key={i}
+                    className="rounded-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/80 px-2.5 py-1 text-[11px] font-bold text-indigo-800"
+                  >
+                    #{theme}
+                  </span>
+                ))}
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-zinc-900 uppercase tracking-wider mb-2">Core Insights</p>
                 <ul className="space-y-2 text-xs text-zinc-600">
-                  {WIREFRAME_V2_METADATA.recommendations.map((rec, i) => (
+                  {!summary?.keyTakeaways.length && <li>No insights identified.</li>}
+                  {(summary?.keyTakeaways ?? []).map((item, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                      <span className="leading-relaxed">{rec}</span>
+                      <span className="leading-relaxed font-medium">{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
           </div>
-        </main>
-      </div>
-
-      {/* MODAL: FOLLOW-UP EMAIL DRAFT */}
-      {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-fade-in border border-zinc-200">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">✉️</span>
-                <h3 className="font-bold text-base text-zinc-900">Generated Follow-up Email</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowEmailModal(false)}
-                className="text-zinc-400 hover:text-zinc-600 text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-zinc-500 uppercase">Subject</label>
-                <p className="mt-1 font-medium text-sm text-zinc-900">
-                  {summary?.followUpEmail.subject || WIREFRAME_V2_RESULT.summary!.followUpEmail.subject}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-zinc-500 uppercase">Body</label>
-                <div className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded-xl bg-zinc-50 p-3.5 text-xs text-zinc-700 leading-relaxed border border-zinc-100">
-                  {summary?.followUpEmail.body || WIREFRAME_V2_RESULT.summary!.followUpEmail.body}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowEmailModal(false)}
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const email = summary?.followUpEmail || WIREFRAME_V2_RESULT.summary!.followUpEmail;
-                  navigator.clipboard.writeText(`${email.subject}\n\n${email.body}`);
-                  showToast("Email draft copied to clipboard!");
-                  setShowEmailModal(false);
-                }}
-                className="rounded-lg bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800"
-              >
-                Copy Email
-              </button>
-            </div>
-          </div>
         </div>
-      )}
-
-      {/* MODAL: ASK AI FOLLOW-UP */}
-      {showAskAiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-fade-in border border-zinc-200">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-              <div className="flex items-center gap-2">
-                <IconSparkles className="w-5 h-5 text-zinc-900" />
-                <h3 className="font-bold text-base text-zinc-900">Ask AI Follow-up</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAskAiModal(false);
-                  setAiAnswer(null);
-                  setAiQuestion("");
-                }}
-                className="text-zinc-400 hover:text-zinc-600 text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleAskAi} className="mt-4 space-y-3">
-              <div>
-                <label className="text-xs font-medium text-zinc-700">Question about the meeting</label>
-                <input
-                  type="text"
-                  value={aiQuestion}
-                  onChange={(e) => setAiQuestion(e.target.value)}
-                  placeholder="e.g., Why did we choose the regular train?"
-                  className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none"
-                />
-              </div>
-
-              {aiAnswer && (
-                <div className="rounded-xl bg-zinc-50 p-3.5 text-xs text-zinc-800 border border-zinc-100">
-                  <p className="font-semibold text-zinc-900 mb-1">AI Answer:</p>
-                  <p className="leading-relaxed">{aiAnswer}</p>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAskAiModal(false);
-                    setAiAnswer(null);
-                  }}
-                  className="rounded-lg border border-zinc-200 px-3.5 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-zinc-800"
-                >
-                  Ask Question
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      </main>
 
       {/* MODAL: ADD ACTION ITEM */}
       {showAddActionItemModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-fade-in border border-zinc-200">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-              <h3 className="font-bold text-base text-zinc-900">+ Add Action Item</h3>
-              <button
-                type="button"
-                onClick={() => setShowAddActionItemModal(false)}
-                className="text-zinc-400 hover:text-zinc-600 text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-indigo-100 animate-scale-in">
+            <h3 className="text-base font-bold text-zinc-900">Add New Action Item</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">Create a task linked to this meeting</p>
 
             <form onSubmit={handleAddActionItem} className="mt-4 space-y-3.5 text-xs">
               <div>
-                <label className="font-medium text-zinc-700">Task description</label>
+                <label htmlFor="new-task-input" className="block font-semibold text-zinc-700 mb-1">Task Title</label>
                 <input
+                  id="new-task-input"
+                  name="newTask"
                   type="text"
                   required
                   value={newTask}
                   onChange={(e) => setNewTask(e.target.value)}
-                  placeholder="e.g., Send presentation slides to client"
-                  className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-900 focus:border-zinc-500 focus:outline-none"
+                  placeholder="Describe the task"
+                  className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-medium text-zinc-700">Assignee</label>
-                  <input
-                    type="text"
+                  <label htmlFor="new-assignee-select" className="block font-semibold text-zinc-700 mb-1">Assignee</label>
+                  <select
+                    id="new-assignee-select"
+                    name="newAssignee"
                     value={newAssignee}
                     onChange={(e) => setNewAssignee(e.target.value)}
-                    placeholder="Speaker 3"
-                    className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-900 focus:border-zinc-500 focus:outline-none"
-                  />
+                    className="w-full rounded-xl border border-zinc-200 px-2.5 py-2 text-xs focus:outline-none"
+                  >
+                    <option value="">Unassigned</option>
+                    {distinctSpeakers.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="font-medium text-zinc-700">Deadline</label>
-                  <input
-                    type="text"
-                    value={newDeadline}
-                    onChange={(e) => setNewDeadline(e.target.value)}
-                    placeholder="Today"
-                    className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-900 focus:border-zinc-500 focus:outline-none"
-                  />
+                  <label htmlFor="new-priority-select" className="block font-semibold text-zinc-700 mb-1">Priority</label>
+                  <select
+                    id="new-priority-select"
+                    name="newPriority"
+                    value={newPriority}
+                    onChange={(e) => setNewPriority(e.target.value as "High" | "Medium" | "Low")}
+                    className="w-full rounded-xl border border-zinc-200 px-2.5 py-2 text-xs focus:outline-none"
+                  >
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
                 </div>
               </div>
 
               <div>
-                <label className="font-medium text-zinc-700">Priority</label>
-                <select
-                  value={newPriority}
-                  onChange={(e) => setNewPriority(e.target.value as "High" | "Medium" | "Low")}
-                  className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-900 focus:border-zinc-500 focus:outline-none"
-                >
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
+                <label htmlFor="new-deadline-input" className="block font-semibold text-zinc-700 mb-1">Deadline</label>
+                <input
+                  id="new-deadline-input"
+                  name="newDeadline"
+                  type="text"
+                  value={newDeadline}
+                  onChange={(e) => setNewDeadline(e.target.value)}
+                  placeholder="Deadline, if known"
+                  className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-xs focus:outline-none"
+                />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3">
+              <div className="mt-5 flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddActionItemModal(false)}
-                  className="rounded-lg border border-zinc-200 px-3.5 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+                  className="rounded-xl border border-zinc-200 px-3.5 py-2 font-semibold text-zinc-600 hover:bg-zinc-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-zinc-800"
+                  className="rounded-xl bg-indigo-600 px-4 py-2 font-bold text-white shadow-xs hover:bg-indigo-700"
                 >
-                  Add Item
+                  Save Action Item
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ASK AI */}
+      {showAskAiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-indigo-100 animate-scale-in">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <div className="flex items-center gap-2">
+                <IconSparkles className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-base font-bold text-zinc-900">Ask Meeting AI Assistant</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAskAiModal(false)}
+                className="text-zinc-400 hover:text-zinc-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAskAi} className="mt-4">
+              <p className="text-xs text-zinc-500 mb-2">
+                Ask questions about decisions, speaker consensus, or budget constraints discussed in this meeting.
+              </p>
+              <div className="relative">
+                <label htmlFor="ai-question-input" className="sr-only">Question for AI</label>
+                <input
+                  id="ai-question-input"
+                  name="aiQuestion"
+                  type="text"
+                  value={aiQuestion}
+                  onChange={(e) => setAiQuestion(e.target.value)}
+                  placeholder="What should we focus on next?"
+                  className="w-full rounded-xl border border-indigo-200 px-3.5 py-2.5 text-xs focus:border-indigo-500 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={askingAi}
+                  className="absolute right-1.5 top-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700"
+                >
+                  {askingAi ? "Thinking…" : "Ask"}
+                </button>
+              </div>
+            </form>
+
+            {aiAnswer && (
+              <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 text-xs">
+                <p className="font-bold text-indigo-900 mb-1">AI Answer:</p>
+                <p className="text-zinc-700 leading-relaxed font-medium">{aiAnswer}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: FOLLOW-UP EMAIL */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-indigo-100 animate-scale-in">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <h3 className="text-base font-bold text-zinc-900">Draft Follow-Up Email</h3>
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="text-zinc-400 hover:text-zinc-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-zinc-700 mb-1">Subject</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={summary?.followUpEmail.subject ?? ""}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-800 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-zinc-700 mb-1">Body</label>
+                <textarea
+                  rows={8}
+                  readOnly
+                  value={summary?.followUpEmail.body ?? ""}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800 font-mono leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  className="rounded-xl border border-zinc-200 px-3.5 py-2 font-semibold text-zinc-600 hover:bg-zinc-50"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!summary) return;
+                    void copyText(`${summary.followUpEmail.subject}\n\n${summary.followUpEmail.body}`, "Email draft copied!");
+                    setShowEmailModal(false);
+                  }}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 font-bold text-white shadow-xs hover:bg-indigo-700"
+                >
+                  Copy to Clipboard
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

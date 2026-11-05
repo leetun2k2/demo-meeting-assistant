@@ -48,6 +48,8 @@ export interface FollowUpEmail {
 }
 
 export interface MeetingSummary {
+  themes: string[];
+  keyTakeaways: string[];
   title: string;
   executiveSummary: string;
   speakerNames: SpeakerNameResolution[];
@@ -62,6 +64,11 @@ export interface MeetingSummary {
 }
 
 export interface MeetingResult {
+  schemaVersion?: 3;
+  processedAt?: string;
+  audioDurationMs?: number;
+  meetingOwner?: string;
+  reviewStatus?: "open" | "complete";
   status: MeetingStatus;
   transcript: TranscriptSegment[];
   summary: MeetingSummary | null;

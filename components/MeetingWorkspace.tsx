@@ -51,6 +51,7 @@ export default function MeetingWorkspace() {
 
   // --- Configuration -------------------------------------------------------
   const [geminiKey, setGeminiKey] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [storageNotice, setStorageNotice] = useState<string | null>(null);
   const [hasPreviousResult, setHasPreviousResult] = useState(false);
@@ -59,6 +60,7 @@ export default function MeetingWorkspace() {
   const [inputMode, setInputMode] = useState<InputMode>("record");
   const [audio, setAudio] = useState<AudioInput | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [recordingElapsedMs, setRecordingElapsedMs] = useState(0);
@@ -92,37 +94,29 @@ export default function MeetingWorkspace() {
     };
   }, []);
 
-  // Restore saved keys once on mount (before this, the workspace renders without browser
-  // API access so server rendering and first paint cannot read storage or mismatch it).
-  // A one-time external-storage sync has no non-effect equivalent here, unlike the
-  // write-on-edit effects below which were moved into their event handlers instead.
   useEffect(() => {
-    const storageOk = probeStorageAvailable();
-    const savedGemini = readStoredValue(GEMINI_API_KEY_STORAGE_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount sync from localStorage
-    if (savedGemini) setGeminiKey(savedGemini);
-    if (!storageOk) setStorageNotice(STORAGE_UNAVAILABLE_MESSAGE);
+    const frame = window.requestAnimationFrame(() => {
+      const storageOk = probeStorageAvailable();
+      const savedGemini = readStoredValue(GEMINI_API_KEY_STORAGE_KEY);
+      if (savedGemini) setGeminiKey(savedGemini);
+      if (!storageOk) setStorageNotice(STORAGE_UNAVAILABLE_MESSAGE);
 
-    // Results now live on /results; only check whether a previous one exists, to offer a
-    // link back to it (the /results page itself reads and owns the actual stored value).
-    const savedResultRaw = readStoredValue(LAST_RESULT_STORAGE_KEY);
-    if (savedResultRaw) {
-      try {
-        const parsed: unknown = JSON.parse(savedResultRaw);
-        if (isStoredMeetingResult(parsed)) setHasPreviousResult(true);
-      } catch {
-        // Corrupted/outdated entry; ignore rather than surface a restore error.
+      const savedResultRaw = readStoredValue(LAST_RESULT_STORAGE_KEY);
+      if (savedResultRaw) {
+        try {
+          const parsed: unknown = JSON.parse(savedResultRaw);
+          if (isStoredMeetingResult(parsed)) setHasPreviousResult(true);
+        } catch {
+          // Corrupted entry; ignore
+        }
       }
-    }
 
-    // Best-effort migration cleanup: drop the obsolete Soniox entry from the previous
-    // two-provider flow without reading or sending its value.
-    removeStoredValue(SONIOX_API_KEY_STORAGE_KEY);
-    setHydrated(true);
+      removeStoredValue(SONIOX_API_KEY_STORAGE_KEY);
+      setHydrated(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  // Native audio preview (P1): derive the object URL from the current audio during render,
-  // and only use an effect for the cleanup side effect (revoking it on change/unmount).
   const previewUrl = useMemo(() => (audio ? URL.createObjectURL(audio.blob) : null), [audio]);
   useEffect(() => {
     return () => {
@@ -141,7 +135,7 @@ export default function MeetingWorkspace() {
     const id = window.setInterval(() => forceProcessingTick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, [processing]);
-  // Recomputed each render; forceProcessingTick above forces a render every second.
+
   const processingElapsedMs = processingStartRef.current ? Date.now() - processingStartRef.current : 0;
 
   const estimatedDurationSec = useMemo(() => {
@@ -157,22 +151,23 @@ export default function MeetingWorkspace() {
 
   const currentStage = useMemo(() => {
     if (elapsedSeconds < 8) {
-      return { step: 1, title: "Uploading audio to Gemini…", desc: "Connecting and transferring file to Gemini Files API" };
+      return { step: 1, title: "Uploading audio to Gemini…", desc: "Connecting and streaming audio to Gemini Files API" };
     } else if (elapsedSeconds < estimatedDurationSec * 0.7) {
-      return { step: 2, title: "Transcribing speech & diarizing speakers…", desc: "Gemini 3.5 Transcribe is analyzing audio and timestamps" };
+      return { step: 2, title: "Transcribing speech & identifying speakers…", desc: "Gemini 3.5 Transcribe analyzing acoustic patterns & diarization" };
     } else {
-      return { step: 3, title: "Generating meeting intelligence…", desc: "Gemini 3.5 Flash-Lite is extracting decisions and action items" };
+      return { step: 3, title: "Extracting meeting intelligence…", desc: "Synthesizing executive summary, decisions, and action items" };
     }
   }, [elapsedSeconds, estimatedDurationSec]);
 
-  // --- Derived state -----------------------------------------------------------
   const hasGeminiKey = geminiKey.trim() !== "";
   const isRecordingBusy = recordingState === "acquiring" || recordingState === "recording" || recordingState === "finalizing";
   const canProcess = !!audio && hasGeminiKey && !processing && !isRecordingBusy;
   const disabledReason = useMemo(() => {
     if (processing) return null;
-    if (isRecordingBusy) return "Stop recording before processing.";
-    if (!audio || !hasGeminiKey) return "Add your Gemini API key and record or upload audio.";
+    if (isRecordingBusy) return "Please stop recording before processing.";
+    if (!audio && !hasGeminiKey) return "Enter your Gemini API key and provide audio to begin.";
+    if (!hasGeminiKey) return "Enter your Gemini API key to process audio.";
+    if (!audio) return "Record or upload audio to process.";
     return null;
   }, [processing, isRecordingBusy, audio, hasGeminiKey]);
 
@@ -189,7 +184,6 @@ export default function MeetingWorkspace() {
     setStorageNotice(ok ? null : "Your key could not be fully cleared from this browser's storage.");
   }
 
-  // --- Recording ------------------------------------------------------------
   function stopMediaTracks() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -197,6 +191,8 @@ export default function MeetingWorkspace() {
 
   async function startRecording() {
     if (recordingState !== "idle" || processing) return;
+
+    setAudio(null);
     setAudioError(null);
     setRecordingNotice(null);
     const token = ++recordingTokenRef.current;
@@ -328,11 +324,7 @@ export default function MeetingWorkspace() {
   }
 
   // --- Upload -----------------------------------------------------------------
-  function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
+  function handleValidatedFile(file: File) {
     setAudioError(null);
     if (file.size === 0) {
       setAudioError("Selected file is empty. Choose another file.");
@@ -349,6 +341,21 @@ export default function MeetingWorkspace() {
 
     setAudio({ blob: file, filename: file.name, sizeBytes: file.size, source: "upload" });
     setProcessError(null);
+  }
+
+  function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    handleValidatedFile(file);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (processing) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleValidatedFile(file);
   }
 
   // --- Tabs -----------------------------------------------------------------
@@ -399,10 +406,6 @@ export default function MeetingWorkspace() {
         return;
       }
 
-      // Hand off to /results: the audio Blob goes through the in-memory session singleton
-      // (it can't be JSON-serialized), the result through the same localStorage slot the
-      // results page reads from. Navigating away is the enhanced flow the UI now uses instead
-      // of rendering results inline on this page.
       setSessionAudio(audio.blob);
       writeStoredValue(LAST_RESULT_STORAGE_KEY, JSON.stringify(data as MeetingResult));
       router.push("/results");
@@ -418,235 +421,523 @@ export default function MeetingWorkspace() {
     }
   }
 
-  const tabButtonClass = (active: boolean) =>
-    `rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-      active ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-    }`;
-
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold text-zinc-900">AI Meeting Assistant</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Record or upload a meeting. Get a transcript, decisions and action items.
-        </p>
-        {hasPreviousResult && (
-          <Link href="/results" className="mt-2 inline-block text-sm font-medium text-blue-700 hover:underline">
-            View last result →
-          </Link>
-        )}
-      </header>
+    <div className="relative min-h-screen overflow-hidden bg-[#f8fafc] text-zinc-900 pb-16">
+      {/* Aurora Ambient Background Orbs */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[900px] rounded-full bg-gradient-to-tr from-indigo-400/20 via-purple-400/15 to-pink-300/15 blur-3xl animate-aurora" />
+      <div className="pointer-events-none absolute top-[400px] -right-32 h-[350px] w-[350px] rounded-full bg-gradient-to-bl from-cyan-400/15 via-blue-400/10 to-transparent blur-3xl" />
+      <div className="pointer-events-none absolute top-[700px] -left-32 h-[350px] w-[350px] rounded-full bg-gradient-to-tr from-purple-400/15 via-indigo-400/10 to-transparent blur-3xl" />
 
-      {/* Section 1 — Configuration */}
-      <section aria-labelledby="config-heading" className="rounded-lg border border-zinc-200 p-5">
-        <h2 id="config-heading" className="text-base font-semibold text-zinc-900">
-          Configuration
-        </h2>
-        <p className="mt-1 text-sm text-zinc-500">{KEYS_HELPER_TEXT}</p>
-        {storageNotice && (
-          <p role="status" className="mt-2 text-sm text-amber-700">
-            {storageNotice}
-          </p>
-        )}
-
-        <div className="mt-4 max-w-sm">
-          <label className="block text-sm">
-            <span className="font-medium text-zinc-700">Gemini API Key</span>
-            <input
-              type="password"
-              autoComplete="off"
-              value={geminiKey}
-              disabled={processing}
-              onChange={(e) => handleGeminiKeyChange(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 disabled:bg-zinc-50"
-            />
-          </label>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleClearKeys}
-          disabled={processing || !geminiKey}
-          className="mt-4 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Clear saved keys
-        </button>
-      </section>
-
-      {/* Section 2 — Audio Input */}
-      <section aria-labelledby="audio-heading" className="mt-6 rounded-lg border border-zinc-200 p-5">
-        <h2 id="audio-heading" className="text-base font-semibold text-zinc-900">
-          Audio Input
-        </h2>
-
-        <div className="mt-3 flex items-center gap-2" role="tablist" aria-label="Audio input method">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={inputMode === "record"}
-            className={tabButtonClass(inputMode === "record")}
-            disabled={processing || isRecordingBusy}
-            onClick={() => switchInputMode("record")}
-          >
-            Record Audio
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={inputMode === "upload"}
-            className={tabButtonClass(inputMode === "upload")}
-            disabled={processing || isRecordingBusy}
-            onClick={() => switchInputMode("upload")}
-          >
-            Upload Audio
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-zinc-400">{SWITCH_INPUT_NOTICE}</p>
-
-        {inputMode === "record" ? (
-          <div className="mt-4 space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={startRecording}
-                disabled={processing || recordingState !== "idle"}
-                className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Start Recording
-              </button>
-              <button
-                type="button"
-                onClick={() => stopRecordingInternal("manual")}
-                disabled={recordingState !== "recording"}
-                className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Stop Recording
-              </button>
-              <button
-                type="button"
-                onClick={handleRecordAgain}
-                disabled={processing || isRecordingBusy || !audio || audio.source !== "record"}
-                className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Record Again
-              </button>
-              <span className="font-mono text-sm text-zinc-500">
-                {formatClock(recordingElapsedMs)} / {formatClock(MAX_RECORDING_MS)}
-              </span>
-            </div>
-            {recordingState === "acquiring" && <p className="text-sm text-zinc-500">Requesting microphone access…</p>}
-            {recordingState === "recording" && <p className="text-sm text-zinc-500">Recording…</p>}
-            {recordingNotice && <p className="text-sm text-emerald-700">{recordingNotice}</p>}
-          </div>
-        ) : (
-          <div className="mt-4 space-y-2">
-            <input
-              type="file"
-              accept=".mp3,.wav,.m4a,.webm,audio/mpeg,audio/wav,audio/mp4,audio/webm"
-              onChange={handleFileSelect}
-              disabled={processing}
-              className="block w-full text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-            <p className="text-xs text-zinc-400">{UPLOAD_HELPER_TEXT}</p>
-          </div>
-        )}
-
-        {audio && (
-          <p className="mt-3 text-sm text-zinc-600">
-            Selected: <span className="font-medium">{audio.filename}</span> ({formatBytes(audio.sizeBytes)})
-          </p>
-        )}
-        {previewUrl && (
-          // P1: native playback only, no autoplay, no waveform/custom player.
-          <audio controls src={previewUrl} className="mt-2 w-full" />
-        )}
-        {audioError && (
-          <p role="alert" className="mt-3 text-sm text-red-700">
-            {audioError}
-          </p>
-        )}
-      </section>
-
-      {/* Section 3 — Processing */}
-      <section aria-labelledby="process-heading" className="mt-6 rounded-lg border border-zinc-200 p-5">
-        <h2 id="process-heading" className="sr-only">
-          Processing
-        </h2>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleProcess}
-            disabled={!canProcess}
-            className={`flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold text-white transition-all ${
-              processing
-                ? "bg-emerald-800 cursor-not-allowed opacity-90"
-                : "bg-emerald-700 hover:bg-emerald-800 shadow-xs disabled:cursor-not-allowed disabled:opacity-50"
-            }`}
-          >
-            {processing && (
-              <svg className="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+      {/* Top Navbar */}
+      <nav className="sticky top-0 z-30 border-b border-indigo-100/70 bg-white/80 backdrop-blur-md px-6 py-3.5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
               </svg>
-            )}
-            <span>{processing ? "Processing Meeting…" : "Process Meeting"}</span>
-          </button>
-          {disabledReason && <p className="text-sm text-zinc-500">{disabledReason}</p>}
+            </div>
+            <div>
+              <span className="text-base font-bold tracking-tight text-zinc-900">
+                Nexus<span className="text-indigo-600 font-extrabold">AI</span> Meeting Intelligence
+              </span>
+              <span className="ml-2 hidden rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60 sm:inline-block">
+                v2.5 PRO
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/results"
+              className="group flex items-center gap-1.5 rounded-xl border border-indigo-200/80 bg-white/90 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300 transition-all"
+            >
+              <span className="flex h-1.5 w-1.5 rounded-full bg-indigo-600 group-hover:scale-125 transition-transform" />
+              <span>{hasPreviousResult ? "View Stored Results →" : "View Results →"}</span>
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Container */}
+      <main className="relative z-10 mx-auto w-full max-w-4xl px-4 pt-10 sm:px-6 lg:px-8">
+        {/* Hero Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200/80 bg-indigo-50/80 px-3.5 py-1 text-xs font-semibold text-indigo-800 shadow-2xs backdrop-blur-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-600" />
+            </span>
+            Multimodal Meeting Analysis & Diarization
+          </div>
+
+          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl lg:text-5xl">
+            Transform Conversations into{" "}
+            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+              Actionable Intelligence
+            </span>
+          </h1>
+
+          <p className="mt-3 text-base text-zinc-600 sm:text-lg max-w-2xl mx-auto leading-relaxed">
+            Record voice or upload audio recordings. NexusAI generates instant diarized transcripts, executive takeaways, key decisions, and prioritized tasks.
+          </p>
         </div>
 
-        {/* Live Loading, Step Indicator, Elapsed Counter, and Estimation */}
-        {processing && (
-          <div role="status" aria-live="polite" className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 shadow-2xs">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold text-emerald-900">
-                  Step {currentStage.step} of 3: {currentStage.title}
-                </span>
+        {/* BENTO GRID WORKSPACE */}
+        <div className="space-y-6">
+          {/* Bento Card 1: Configuration */}
+          <section
+            aria-labelledby="config-heading"
+            className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-white/90 p-6 shadow-sm backdrop-blur-md transition-all hover:border-indigo-200 hover:shadow-md"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100/80">
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 id="config-heading" className="text-base font-bold text-zinc-900">
+                    Gemini AI Configuration
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">{KEYS_HELPER_TEXT}</p>
+                </div>
               </div>
-              <span className="font-mono text-xs font-bold text-emerald-800">
-                {progressPercent}%
+
+              <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-200/60">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Client-Side Storage
               </span>
             </div>
 
-            {/* Animated progress bar */}
-            <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+            {storageNotice && (
+              <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-800">
+                {storageNotice}
+              </div>
+            )}
+
+            <div className="mt-5 max-w-lg">
+              <label htmlFor="gemini-key-input" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-1.5">
+                Google AI Studio Key (Gemini 2.5 / 3.5)
+              </label>
+              <div className="relative">
+                <input
+                  id="gemini-key-input"
+                  name="geminiApiKey"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="off"
+                  placeholder="AIzaSy..."
+                  value={geminiKey}
+                  disabled={processing}
+                  onChange={(e) => handleGeminiKeyChange(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 pr-20 text-sm font-mono text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-zinc-100/70 transition-all"
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="rounded-md px-2 py-1 text-[11px] font-semibold text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/60 transition-colors"
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
+                >
+                  <span>Get free Gemini API Key</span>
+                  <span className="text-[10px]">↗</span>
+                </a>
+                {geminiKey && (
+                  <button
+                    type="button"
+                    onClick={handleClearKeys}
+                    disabled={processing}
+                    className="font-medium text-rose-600 hover:text-rose-800 transition-colors disabled:opacity-50"
+                  >
+                    Clear Key
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Bento Card 2: Audio Input (Record vs Upload) */}
+          <section
+            aria-labelledby="audio-heading"
+            className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-white/90 p-6 shadow-sm backdrop-blur-md transition-all hover:border-indigo-200 hover:shadow-md"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 border border-purple-100/80">
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" x2="12" y1="19" y2="22" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 id="audio-heading" className="text-base font-bold text-zinc-900">
+                    Audio Input Source
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">High-fidelity meeting recording or file ingest</p>
+                </div>
+              </div>
+
+              {/* Segmented Mode Switcher */}
               <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-500 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
+                className="flex items-center rounded-xl bg-zinc-100 p-1 border border-zinc-200/80 shadow-2xs"
+                role="tablist"
+                aria-label="Audio input method"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === "record"}
+                  disabled={processing || isRecordingBusy}
+                  onClick={() => switchInputMode("record")}
+                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                    inputMode === "record"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-zinc-600 hover:text-zinc-900"
+                  }`}
+                >
+                  <span className={`h-2 w-2 rounded-full ${recordingState === "recording" ? "bg-rose-500 animate-ping" : "bg-zinc-400"}`} />
+                  <span>Record Live</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === "upload"}
+                  disabled={processing || isRecordingBusy}
+                  onClick={() => switchInputMode("upload")}
+                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                    inputMode === "upload"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-zinc-600 hover:text-zinc-900"
+                  }`}
+                >
+                  <svg className="h-3.5 w-3.5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" x2="12" y1="3" y2="15" />
+                  </svg>
+                  <span>Upload File</span>
+                </button>
+              </div>
             </div>
 
-            <p className="mt-2 text-xs text-emerald-700 leading-relaxed">
-              {currentStage.desc}
-            </p>
+            <p className="text-xs text-zinc-400 mb-4">{SWITCH_INPUT_NOTICE}</p>
 
-            {/* Timers & Estimation */}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-200/50 pt-3 text-xs">
-              <div className="flex items-center gap-1.5 text-zinc-700">
-                <span className="text-zinc-500">⏱️ Elapsed:</span>
-                <span className="font-mono font-bold text-zinc-900">{formatClock(processingElapsedMs)}</span>
+            {/* TAB CONTENT: RECORD LIVE */}
+            {inputMode === "record" ? (
+              <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  {/* Digital Clock & Audio Wave Visualizer */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-baseline gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 shadow-2xs font-mono">
+                      <span className="text-lg font-bold text-zinc-900">{formatClock(recordingElapsedMs)}</span>
+                      <span className="text-xs text-zinc-400">/ {formatClock(MAX_RECORDING_MS)}</span>
+                    </div>
+
+                    {/* Equalizer animation bars */}
+                    <div className="flex items-end gap-1 h-8 px-2">
+                      <div className={`w-1.5 rounded-full bg-indigo-500 ${recordingState === "recording" ? "wave-bar-1" : "h-1.5"}`} />
+                      <div className={`w-1.5 rounded-full bg-purple-500 ${recordingState === "recording" ? "wave-bar-2" : "h-2"}`} />
+                      <div className={`w-1.5 rounded-full bg-pink-500 ${recordingState === "recording" ? "wave-bar-3" : "h-3"}`} />
+                      <div className={`w-1.5 rounded-full bg-indigo-500 ${recordingState === "recording" ? "wave-bar-4" : "h-2"}`} />
+                      <div className={`w-1.5 rounded-full bg-purple-500 ${recordingState === "recording" ? "wave-bar-5" : "h-1.5"}`} />
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {recordingState === "idle" && (
+                      <button
+                        type="button"
+                        onClick={startRecording}
+                        disabled={processing}
+                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-rose-500/20 hover:from-rose-500 hover:to-red-500 hover:shadow-rose-500/30 transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <span className="flex h-2 w-2 rounded-full bg-white animate-pulse" />
+                        <span>Start Recording</span>
+                      </button>
+                    )}
+
+                    {recordingState === "recording" && (
+                      <button
+                        type="button"
+                        onClick={() => stopRecordingInternal("manual")}
+                        className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-zinc-800 transition-all active:scale-95"
+                      >
+                        <span className="h-2 w-2 rounded-xs bg-rose-500" />
+                        <span>Stop Recording</span>
+                      </button>
+                    )}
+
+                    {audio && audio.source === "record" && recordingState === "stopped" && (
+                      <button
+                        type="button"
+                        onClick={handleRecordAgain}
+                        disabled={processing || isRecordingBusy}
+                        className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 transition-colors"
+                      >
+                        <svg className="h-3.5 w-3.5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="1 4 1 10 7 10" />
+                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                        </svg>
+                        <span>Record Again</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {recordingState === "acquiring" && (
+                  <p className="mt-3 text-xs text-indigo-700 animate-pulse flex items-center gap-1.5">
+                    <span>🎙️</span> Requesting microphone permissions from browser…
+                  </p>
+                )}
+                {recordingState === "recording" && (
+                  <p className="mt-3 text-xs text-rose-600 font-semibold flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-rose-600 animate-ping" />
+                    Recording live microphone stream. Speak clearly.
+                  </p>
+                )}
+                {recordingNotice && (
+                  <p className="mt-3 text-xs text-emerald-700 font-medium">{recordingNotice}</p>
+                )}
               </div>
-              <div className="flex items-center gap-1.5 text-zinc-600">
-                <span className="text-zinc-500">⏳ Estimated:</span>
-                <span className="font-medium text-zinc-800">
-                  ~{estimatedDurationSec}s {remainingSeconds > 0 ? `(~${remainingSeconds}s remaining)` : "(finishing up…)"}
-                </span>
+            ) : (
+              /* TAB CONTENT: UPLOAD FILE */
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(true);
+                }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={handleDrop}
+                className={`group/drop relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-all ${
+                  isDragOver
+                    ? "border-indigo-500 bg-indigo-50/60"
+                    : "border-indigo-200/80 bg-zinc-50/40 hover:border-indigo-300 hover:bg-indigo-50/30"
+                }`}
+              >
+                <input
+                  type="file"
+                  id="audio-file-input"
+                  accept=".mp3,.wav,.m4a,.webm,audio/mpeg,audio/wav,audio/mp4,audio/webm"
+                  onChange={handleFileSelect}
+                  disabled={processing}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor="audio-file-input"
+                  className="cursor-pointer flex flex-col items-center justify-center w-full"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-50 to-purple-50 text-indigo-600 border border-indigo-100 shadow-sm group-hover/drop:scale-105 transition-transform">
+                    <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" x2="12" y1="3" y2="15" />
+                    </svg>
+                  </div>
+
+                  <p className="mt-4 text-sm font-bold text-zinc-900">
+                    Click to select audio or drag and drop
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">{UPLOAD_HELPER_TEXT}</p>
+
+                  <div className="mt-3 flex items-center gap-1.5">
+                    {["MP3", "WAV", "M4A", "WebM", "Max 20MB"].map((badge) => (
+                      <span
+                        key={badge}
+                        className="rounded-md bg-white border border-zinc-200 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 shadow-2xs"
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
+                </label>
               </div>
+            )}
+
+            {/* Selected File / Recording Audio Card & Preview */}
+            {audio && (
+              <div className="mt-5 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-zinc-900 truncate max-w-xs sm:max-w-md">
+                        {audio.filename}
+                      </p>
+                      <p className="text-[11px] text-zinc-500 font-mono">
+                        {formatBytes(audio.sizeBytes)} • {audio.source === "record" ? "Live Voice Capture" : "Uploaded Ingest"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/70 border border-emerald-300 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                    Ready for Ingest
+                  </span>
+                </div>
+
+                {previewUrl && (
+                  <div className="mt-3">
+                    <audio controls src={previewUrl} className="w-full h-9 rounded-lg" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {audioError && (
+              <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800 font-medium">
+                {audioError}
+              </div>
+            )}
+          </section>
+
+          {/* Bento Card 3: Processing & Action Launch */}
+          <section
+            aria-labelledby="process-heading"
+            className="group relative overflow-hidden rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/60 via-white to-purple-50/40 p-6 shadow-sm backdrop-blur-md transition-all hover:border-indigo-300 hover:shadow-md"
+          >
+            <h2 id="process-heading" className="sr-only">
+              Processing & Action Launch
+            </h2>
+
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-zinc-900">Process Meeting Intelligence</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Automated diarization, structured summary, and action items extraction
+                </p>
+              </div>
+
+              {/* Primary Call to Action Button */}
+              <button
+                type="button"
+                onClick={handleProcess}
+                disabled={!canProcess}
+                className={`relative group/btn flex items-center gap-2.5 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all shadow-md active:scale-98 ${
+                  processing
+                    ? "bg-indigo-900 cursor-not-allowed opacity-90 shadow-none"
+                    : canProcess
+                    ? "bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.01]"
+                    : "bg-zinc-400 cursor-not-allowed opacity-60 shadow-none"
+                }`}
+              >
+                {processing ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    <span>Analyzing Meeting with Gemini…</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4 text-purple-200 group-hover/btn:rotate-12 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                    </svg>
+                    <span>Run AI Analysis</span>
+                  </>
+                )}
+              </button>
             </div>
-          </div>
-        )}
 
-        {/* Error Display */}
-        {processError && (
-          <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-rose-900 shadow-xs animate-fade-in">
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700 font-bold">
-                ⚠️
+            {disabledReason && (
+              <p className="mt-3 text-xs text-zinc-500 flex items-center gap-1.5">
+                <span className="text-indigo-500 font-bold">ℹ</span> {disabledReason}
+              </p>
+            )}
+
+            {/* LIVE PROCESSING PROGRESS MODAL / PANEL */}
+            {processing && (
+              <div role="status" aria-live="polite" className="mt-6 rounded-2xl border border-indigo-200/80 bg-white/95 p-5 shadow-md">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-2.5 w-2.5 rounded-full bg-indigo-600 animate-ping" />
+                    <span className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
+                      Stage {currentStage.step} of 3: {currentStage.title}
+                    </span>
+                  </div>
+                  <span className="font-mono text-sm font-extrabold text-indigo-700">
+                    {progressPercent}%
+                  </span>
+                </div>
+
+                {/* Animated Gradient Progress Bar */}
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-indigo-100/70 p-0.5">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-500 ease-out shadow-xs"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+
+                <p className="mt-2.5 text-xs text-zinc-600 leading-relaxed font-medium">
+                  {currentStage.desc}
+                </p>
+
+                {/* Processing Steps Status Chips */}
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className={`rounded-xl p-2.5 text-xs border ${currentStage.step >= 1 ? "border-indigo-200 bg-indigo-50/70 text-indigo-900 font-semibold" : "border-zinc-200 bg-zinc-50 text-zinc-400"}`}>
+                    <div className="flex items-center gap-1.5">
+                      <span>{currentStage.step > 1 ? "✓" : "1."}</span>
+                      <span>Gemini Upload</span>
+                    </div>
+                  </div>
+                  <div className={`rounded-xl p-2.5 text-xs border ${currentStage.step >= 2 ? "border-indigo-200 bg-indigo-50/70 text-indigo-900 font-semibold" : "border-zinc-200 bg-zinc-50 text-zinc-400"}`}>
+                    <div className="flex items-center gap-1.5">
+                      <span>{currentStage.step > 2 ? "✓" : "2."}</span>
+                      <span>Diarization</span>
+                    </div>
+                  </div>
+                  <div className={`rounded-xl p-2.5 text-xs border ${currentStage.step >= 3 ? "border-indigo-200 bg-indigo-50/70 text-indigo-900 font-semibold" : "border-zinc-200 bg-zinc-50 text-zinc-400"}`}>
+                    <div className="flex items-center gap-1.5">
+                      <span>3.</span>
+                      <span>Synthesis</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timers & Estimates */}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3 text-xs">
+                  <div className="flex items-center gap-1.5 text-zinc-600">
+                    <span className="text-zinc-400">⏱️ Elapsed:</span>
+                    <span className="font-mono font-bold text-zinc-900">{formatClock(processingElapsedMs)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-zinc-600">
+                    <span className="text-zinc-400">⏳ Estimated:</span>
+                    <span className="font-medium text-zinc-800">
+                      ~{estimatedDurationSec}s {remainingSeconds > 0 ? `(~${remainingSeconds}s remaining)` : "(wrapping up…)"}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-bold text-rose-900">Processing Failed</h3>
+            )}
+
+            {/* Process Error */}
+            {processError && (
+              <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50/90 p-4 text-rose-900 shadow-xs">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-rose-600 font-bold">⚠️</span>
+                    <h4 className="text-xs font-bold text-rose-900">Analysis Encountered An Error</h4>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setProcessError(null)}
@@ -655,17 +946,14 @@ export default function MeetingWorkspace() {
                     Dismiss ✕
                   </button>
                 </div>
-                <p className="mt-1.5 text-xs text-rose-800 leading-relaxed break-words font-mono bg-rose-100/70 p-2.5 rounded-lg border border-rose-200/60 select-text">
+                <p className="mt-2 text-xs font-mono bg-rose-100/60 p-2.5 rounded-lg border border-rose-200 text-rose-800">
                   {processError}
                 </p>
-                <p className="mt-2 text-[11px] text-rose-700">
-                  Please verify your Gemini API key in Google AI Studio or check that the file is not corrupted.
-                </p>
               </div>
-            </div>
-          </div>
-        )}
-      </section>
+            )}
+          </section>
+        </div>
+      </main>
     </div>
   );
 }

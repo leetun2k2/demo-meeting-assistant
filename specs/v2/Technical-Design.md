@@ -139,3 +139,62 @@ Nothing crosses the server boundary that doesn't already: the route handler's jo
 - No implementation, tests, or real Gemini calls were performed to produce this design, consistent with the PRD's stated scope (§8–9 in the v1 PRD; unchanged for v2). Implementation must report unverified behavior honestly and leave runtime verification (prompt faithfulness, schema compliance, actual name-resolution accuracy) to execution/testing.
 
 No further product decision is required to proceed to task planning and implementation.
+
+
+## 2026-11-06 review addendum — Remove mock content from Results
+
+Status: Proposed, not implemented or provider-tested. This addendum supersedes conflicting earlier proposals for the scope below. Earlier repository evidence describes a previous implementation snapshot; the evidence here is the current source. User priority: entirely input-driven output; approximate AI inference is acceptable, with filling useful sections prioritized over extraction accuracy.
+
+### Current implementation and root cause
+
+`lib/meeting/gemini.ts` already calls `gemini-3.5-flash-lite:generateContent` with JSON structured output and returns risks, unresolvedQuestions, keyMoments, nextSteps and followUpEmail. `components/OutputPage.tsx` ignores several of these fields in favor of fixed travel-meeting content. Changing only the prompt cannot remove these mocks. The current global instruction “Never invent content that is not explicitly supported” also conflicts with the existing nextSteps instruction asking for recommendations. `validateSummary()` currently discards any model-produced action priority because it is absent from both the response schema and parsed object.
+
+### Recommended approach
+
+Keep one summarization call and the existing model. Reuse existing output fields before adding new ones. Retain JSON structured output; update RESPONSE_SCHEMA, MeetingSummary, runtime parsing, speaker-mention normalization, and UI bindings together. No model migration or request-format migration is proposed. Google documents structured output as schema-constrained generation; this is a format mechanism, not proof of semantic accuracy: https://ai.google.dev/gemini-api/docs/generate-content/structured-output .
+
+| Results section | Source and proposed behavior |
+| --- | --- |
+| Title and executive summary | Existing title/executiveSummary; use the title as hero heading to avoid another redundant model field. |
+| Discussion and decisions | Existing discussions/decisions. Keep decisions as actual or clearly implied agreements; no need to force a decision into every conversation. |
+| Risks / Blockers | Bind summary.risks. Allow plausible concerns inferred from the actual discussion; frame inferred concerns as possibilities, not established incidents. |
+| Next Milestones | Bind summary.nextSteps, allowing 2–4 practical recommendations derived from meeting context. |
+| Key Moments | Bind summary.keyMoments; use numeric transcript startMs/endMs in the prompt and actual timestamps in jump controls instead of fixed 00:23 / segment index values. |
+| Themes and tags | Add themes: string[], aiming for 2–5 concise topics specific to the input. |
+| Core Insights | Add keyTakeaways: string[], aiming for 2–4 synthesized observations about implications, alignment and outcomes; avoid verbatim repetition of executiveSummary. |
+| Action priority | Add priority enum High/Medium/Low to each model action item; infer from urgency, impact and dependencies. Preserve it in validateSummary; keep status initialized locally to open. |
+| Follow-up email | Bind summary.followUpEmail subject/body, and copy the displayed complete draft. Already produced in the current call. |
+| Date | Persist processedAt as an ISO timestamp and label it Processed on. Transcript alone cannot establish the actual meeting date; do not ask Gemini to guess one. |
+| Duration | Prefer finite positive audio metadata captured before navigation and persisted in MeetingResult; fallback to max valid endMs/startMs, labelled estimated. Audio load failure must leave the transcript usable. |
+| Speaker contribution | Sum positive endMs-startMs intervals per speaker; divide by total measured speaker time. Label as estimated speaking time; overlap can be counted for each speaker. With missing timing use text share explicitly labelled text share, without invented minutes. |
+| Waveform | Remove synthetic amplitude bars, or replace with a real progress bar driven by audio currentTime/duration. No audio decoding dependency needed. |
+| Verification/agreement/audio-quality labels | Replace with factual status such as AI-generated; remove unmeasured 100% agreement and Clear audio claims. |
+
+### Prompt policy for useful completion
+
+Replace the global explicit-evidence-only instruction with field-specific instructions. Facts, participant identities and task commitments remain based on the transcript. Analysis fields (risks, themes, keyTakeaways, nextSteps, priority) may reasonably infer implications from that transcript. When risks are inferred, use language such as “Potential…” or its equivalent in the meeting language. Missing real assignees/deadlines remain Unknown/Not specified. Do not invent participant names, dates, integrations or completed work to make cards look full.
+
+Ask for concise, useful analysis even for short inputs, without making array counts hard validation requirements. For a genuine transcript with little actionable content, synthesize a relevant takeaway or suggested follow-up. For no speech, show an explicit empty state; for provider failure, preserve transcript and show retry. Neither case should populate unrelated sample content. Runtime validation should drop malformed optional enrichment entries and default new optional arrays to [] instead of losing the existing valid summary. Blank required core summary remains a summary_failed outcome.
+
+### Interactive features and state
+
+Ask AI needs an on-demand POST /api/ask-meeting call using the same configured model, sending the current transcript, optional current summary, question and existing user-provided key. A static summarization response cannot answer arbitrary future questions. Treat transcript/question as untrusted data, use the same dominant-language and inference policy, bounded input and request timeout, and render loading/error states with no canned fallback. This is a deliberate addition to the original no-new-route scope: it enables an existing UI feature rather than adding background infrastructure.
+
+Assign Owner and Mark Complete should update persisted user-controlled state (meetingOwner/reviewStatus), not generated AI assertions. Sync to Tools requires actual external integrations; remove or disable it until those exist. Copying a local results URL is not sharing a persisted meeting; remove the shareability claim or remove that control. No Jira/Notion integration is proposed for this change.
+
+### Cache, retries and failure behavior
+
+Remove wireframe imports and automatic demo fallback from production Results. No saved result means an empty state linking to audio input. Preserve processedAt, audio duration and user state when retrying only the summary. Use a cache schema version and invalidate incompatible legacy results, including old demo samples (their provenance cannot reliably be reconstructed). Let the user reprocess rather than guessing provenance. Defaults for optional enrichment must be empty or derived from the current input, never wireframe constants. Remove automatic pre-starred segments; new tasks should default to an existing participant or unassigned rather than Speaker 3.
+
+### Validation required before delivery
+
+Use two unrelated real audio inputs and inspect the returned JSON alongside each rendered section; no train/travel content should remain unless present or relevant to the actual input. Verify short transcripts, zero speech, provider failure, summary retry, fresh results navigation, reload, and old-cache invalidation. Check speaker metrics, actual email clipboard text, and Ask AI with questions outside the sample keywords. Run existing type/lint/build checks appropriate to implementation; no new unit tests are required. No live Gemini request or functional verification was performed in this review, so response completeness, latency and inference quality remain unverified. Keep the current 60-second summary budget initially and measure before changing it.
+
+This addendum is the canonical proposal; the mock-data review remains a record of the observed implementation. No application source was modified for this review.
+
+
+### Implementation checkpoint (2026-11-06)
+
+Implemented the real-results proposal: Gemini schema/prompt/parser enrichment; Results bindings for risks, recommendations, themes, takeaways, questions, moments and email; real Ask AI route; persisted meeting owner/completion; versioned validated cache; no automatic demo fallback or wireframe data module; disabled unsupported tool sync and removed local-link sharing claim. Duration initially uses transcript timing, then persists actual audio metadata when the Results audio element loads. Speaking-time shares use segment durations, falling back explicitly to text share. The synthetic waveform was replaced by playback progress.
+
+Verification: TypeScript check, ESLint and production build passed. Isolated Chrome smoke checks with a synthetic search-release fixture confirmed all content bindings, duration/share calculation, disabled sync, full email clipboard payload, completion persistence across reload, and absence of old travel-meeting content. No-speech and summary-failure states render no sample data; summary failure retains transcript and retry. Legacy caches are rejected. Invalid Ask AI and summary-retry requests returned HTTP 400 as expected. No valid-key Gemini call or real-audio end-to-end run was performed; model output quality, live schema acceptance, and provider latency remain unverified. No new unit tests or dependencies were introduced.
