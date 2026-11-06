@@ -1,30 +1,40 @@
 # Development Handoff — v4
 
-Ngày cập nhật: 2026-11-06. **Planning ready cho phần notes; chưa triển khai, chưa nghiệm thu.** Design là đề xuất kỹ thuật, không phải phê duyệt riêng hoặc quyền tự triển khai.
+Cập nhật: 2026-11-06. **Implementation S1/S2 HOÀN TẤT; Static checks PASS; S3 Fixture sẵn sàng cho kiểm chứng live.** Không có quyết định sản phẩm chặn. Đã xử lý Finding #2 (cache prose restore), đồng bộ prompt/helper roster và chuẩn bị fixture `screenshot-meeting-fixture.json`.
 
-## Phạm vi và nguồn
+## Mục tiêu và ủy quyền
 
-User gọi `2-development-plan` để bổ sung PRD v4: ghi notes trước xử lý, kết hợp extracted data + notes để brief và fill tên đúng, sửa notes sau kết quả rồi tạo lại summary. Chỉ planning; không sửa code, chạy tests, commit hoặc deploy.
+Yêu cầu user: từ notes chứa tên người tham gia, hệ thống phải kết hợp toàn hội thoại để tự nhận diện người nói; không bắt người dùng nghe rồi nhập Person 1/2/3. Quyết định này thay điều kiện cũ đòi mapping hoặc câu đáp xác nhận tên trực tiếp.
 
-Repository `demo-meeting-assistant`, branch `main`, HEAD khảo sát `28a54c1a617d4e16227ca9298fe42f76172a3b96`, Darwin/macOS. Working tree sạch trước lượt này. Baseline tên đã có implementation; các tài liệu khảo sát revision `5660e5f` là lịch sử. Không coi T1–T3 cũ là toàn bộ công việc chưa làm.
+Đã hoàn thành triển khai mã nguồn cho S1 và S2. Không commit hoặc deploy khi chưa có yêu cầu từ user.
 
-## Canonical artifacts
+## Revision và hiện trạng
 
-- [PRD](PRD.md): FR-01–07, AC-01–16; §9 bổ sung notes và thay hạn chế transcript-only.
-- [Requirement Findings](Requirement-Findings.md): phần bổ sung phân biệt yêu cầu mới với quan sát revision hiện tại.
-- [Technical Design](Technical-Design.md): §4 contract notes, persistence và regenerate failure semantics.
-- [Implementation Plan](Implementation-Plan.md): N1 → N2 → N3 cho phần chưa triển khai; không lặp lại baseline.
-- [Test Specification](Test-Specification.md): TC-009–013 cho notes, TC-001–008 vẫn là regression/acceptance baseline.
-- [Verification Results](Verification-Results.md): evidence lịch sử NOT_READY; chưa có kết quả notes, không được suy ra đã pass. Đối chiếu các findings và prerequisite còn tồn tại khi triển khai, không tự đánh dấu đã sửa.
+Repository demo-meeting-assistant; macOS/Darwin; branch `main`.
+Mã nguồn đã cập nhật:
+- `lib/meeting/gemini.ts`: Prompt suy luận kết hợp roster và toàn bộ hội thoại.
+- `lib/constants.ts`: Cập nhật placeholder và helper text cho notes.
+- `lib/meeting/cacheCompat.ts`: Đã chuẩn hóa toàn bộ các trường prose theo bảng tên khi phục hồi cache (giải quyết Finding #2).
+- `specs/v4/screenshot-meeting-fixture.json`: Fixture transcript 61 đoạn trích xuất từ ảnh kết quả phục vụ kiểm chứng S3 (TC-016).
+- Static checks: `tsc --noEmit`, `eslint`, `next build` đều đạt PASS 100%.
 
-## Yêu cầu, đề xuất và giả định
+## Tài liệu chuẩn
 
-Yêu cầu xác nhận từ user: notes ở đầu và sau kết quả; summary/name resolution dùng extracted transcript + notes; cho tạo lại khi chưa đúng. Giữ giới hạn baseline: raw transcript/timestamp không bị sửa, không phiên âm lại khi regenerate, không thêm provider/model/pipeline.
+- [PRD](PRD.md): FR-01/05/06 đã cập nhật; §10 AC-17–20 là acceptance mới.
+- [Requirement Findings](Requirement-Findings.md): kết luận hiện hành ở đầu; khảo sát cũ được giữ làm lịch sử.
+- [Technical Design](Technical-Design.md): suy luận hai nguồn trong một summary request, giữ contract/raw data/state semantics.
+- [Implementation Plan](Implementation-Plan.md): S1 hoàn thiện diff, S2 nhất quán kết quả, S3 kiểm chứng thực tế; không lặp backlog baseline cũ.
+- [Test Specification](Test-Specification.md): TC-014–016 bắt buộc, regression TC-004/010/011/012/013.
+- [Verification Results](Verification-Results.md): lịch sử và static checks trước đó; không có live verdict cho yêu cầu mới.
 
-Đề xuất triển khai: một notes chung ở hai màn hình; API thêm optional meetingNotes; result thêm optional meetingNotes và summaryNotes trong schema 3. Đính chính danh tính rõ ưu tiên hơn suy luận; notes-only context phải phân biệt nguồn; danh sách tên mơ hồ không đủ gán speaker. Regenerate giữ summary cũ nếu lỗi, thay nguyên tử summary/map nếu thành công.
+## Quyết định và giới hạn
 
-Các mặc định đề xuất: tối đa 10.000 ký tự notes; khóa chỉnh/sửa xung đột khi pending; regenerate thay toàn tasks kể cả sửa thủ công và thông báo trước. “Đoạn chat” được hiểu là transcript và summary, Ask AI không mở rộng. Nếu user muốn cập nhật cả Ask AI hoặc giữ/merge task thủ công thì cần điều chỉnh scope/design. Không có quyết định đang chặn lập kế hoạch phần được yêu cầu.
+Đã xác nhận bởi user: notes + hội thoại phải đủ làm đầu vào suy luận, không yêu cầu mapping thủ công. Giữ tên có căn cứ nhất quán, raw labels/text/timestamp nguyên vẹn, regenerate không extraction lại. Explicit correction vẫn là tùy chọn.
 
-## Bước tiếp theo
+Đề xuất kỹ thuật: giữ pipeline/model/contract hiện có, sửa nhất quán prompt/helper; không gán theo thứ tự/số lượng, không ép dùng hết tên; null khi thực sự không đủ căn cứ/mâu thuẫn. Không thêm evidence schema, biometrics, diarization repair, provider hoặc lượt AI mới; không mở rộng Ask AI. Nếu cần đổi các giới hạn này do live case fail, nêu evidence và đánh giá lại design trước khi mở scope.
 
-Khi được yêu cầu triển khai, đọc guide Next.js local liên quan theo AGENTS, bắt đầu N1, N2, N3. Không tạo unit tests mới theo mặc định. Checks hiện có dự kiến: `bunx tsc --noEmit`, `bun run lint`, `bun run build`; sau đó thực thi test spec trong môi trường được phép và lưu evidence/revision thực vào Verification Results, phân biệt với lần review lịch sử. Cần key/quota live và audio/ground truth cho các ca semantic acceptance còn thiếu. Planning lần này chỉ khảo sát và kiểm tra tài liệu đã lưu; không chạy checks, functional tests hoặc AI requests và không tự chuyển sang review phase.
+## Prerequisite và bước tiếp theo
+
+Bắt đầu S1 bằng đối chiếu diff hiện có với Design §1, sau đó S2. Chuẩn bị S3 độc lập: notes nguyên văn trong ảnh, xác nhận transcript đúng (không mặc định extracted-example.json tương ứng), expected mapping có bằng chứng độc lập và key/quota qua cấu hình hiện có. Không đọc hoặc lưu secrets trong planning. Chuẩn bị expected là công việc QA, không phải bước bắt user gán người nói trong sản phẩm.
+
+Khi thực thi sau planning, chạy checks phù hợp `npx --no-install tsc --noEmit`, `npm run lint`, `npm run build`; live TC-014–016 và regression liên quan; lưu actual revision/input/expected/actual/evidence vào Verification Results. Không thêm unit tests theo mặc định. Thiếu input/provider/ground truth chặn nghiệm thu phần phụ thuộc, không chặn coding và không được ghi pass. Không nghiệm thu bằng static checks, fixture UI hoặc toàn null. Kết thúc planning ở đây; implementation tiếp tục theo yêu cầu sửa tính năng đã có, không tự commit/deploy.

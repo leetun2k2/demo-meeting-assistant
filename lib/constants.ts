@@ -62,7 +62,7 @@ export const SUMMARY_TEXT_CHAR_LIMIT = 200_000;
 export const NOTES_CHAR_LIMIT = 10_000;
 
 export const NOTES_PLACEHOLDER =
-  "Speaker 1 là Alex; Speaker 2 là Bob; Nexus là tên dự án.";
+  "Cuộc họp gồm Alex (backend), Bob (frontend), Alice (PM). Nexus là tên dự án.";
 
 export const NOTES_HELPER_TEXT =
-  "Optional. Add context, terminology or explicit speaker corrections (e.g. \"Speaker 1 is Alex\"). A plain list of names is not enough to identify who is speaking.";
+  "Optional. Add participant names, roles and meeting context. AI combines these notes with the conversation to identify speakers automatically.";

@@ -1,56 +1,29 @@
 # Implementation Plan — v4
 
-Ngày: 2026-11-06. Trạng thái: Có thể bắt đầu khi người dùng giao triển khai; design là đề xuất, chưa có code/test v4.
-Nguồn: [Technical Design](Technical-Design.md), [PRD](PRD.md).
+Cập nhật 2026-11-06. Planning ready; chất lượng live chưa xác nhận. Nguồn: [PRD §10](PRD.md), [Technical Design](Technical-Design.md). Baseline notes/regenerate đã có ở HEAD `3959b413d02d9fcc364cfcc02a4f304bb345c7fe`; không triển khai lại T1–T3/N1–N3 của kế hoạch cũ.
 
-## T1 — Nhận diện có căn cứ và bảng tên an toàn
+## S1 — Hoàn thiện suy luận tự động từ roster và hội thoại
 
-Mục đích: nhận tên từ toàn hội thoại mà không ép tên cho người chưa rõ (FR-01, FR-03).
+Tiếp nhận diff đang có trong `lib/meeting/gemini.ts` và `lib/constants.ts`, không coi là bản đã nghiệm thu. Rà soát cả speakerNames instruction, notes instruction và helper/placeholder để không còn yêu cầu user tự gán Person/Speaker N hoặc bắt buộc câu đáp xác nhận tên trực tiếp.
 
-- Cải thiện `buildSpeakerNamesInstruction` và hướng dẫn prose/task trong `lib/meeting/gemini.ts` theo ca tiếng Việt của design; giữ request/schema/model/budget.
-- Chuẩn hóa bảng đủ raw keys, null fallback, placeholder, whitespace và duplicate conflict. Có thể dùng chung logic thuần với cache; không đưa server module gọi Gemini vào browser bundle.
-- Giữ task tự nhận bằng raw key, tên người ngoài bằng text, owner chưa rõ bằng Unknown. Không tự suy luận ownership từ người đang nói.
-- Xong khi contract không đổi, map chỉ chứa keys thật và bảo toàn transcript; live behavior kiểm tra theo TC-001–003/007. Thiếu tên không làm summary fail.
+Giữ một summary request. Khuyến khích suy luận qua gọi–đáp tự nhiên, tiếp tục demo, vai trò và bằng chứng muộn, kể cả tên chỉ có trong notes. Không gán theo thứ tự, số lượng, nhắc tên người thứ ba hoặc ép mọi label có tên. Hỗ trợ đính chính rõ và null khi mâu thuẫn. Không hardcode tên/đáp án mẫu, không thay raw transcript, response schema, model hay key handling.
 
-## T2 — Tên nhất quán trên kết quả và thao tác task
+Hoàn tất khi đường Process lần đầu và Regenerate dùng cùng quy tắc; ca dương TC-014/015 nhận đúng tên, ca âm TC-012/015 không ép tên. Prompt diff đã tồn tại, phần còn lại là đối chiếu và hoàn thiện dựa trên evidence; không tạo implementation mới chỉ để khớp kế hoạch.
 
-Phụ thuộc quy tắc bảng tên của T1; có thể chuẩn bị helper trước khi prompt hoàn tất.
+## S2 — Xác nhận tên được áp dụng trên kết quả hiện có
 
-- Cập nhật `lib/meeting/display.ts`: tên trùng có số phân biệt; normalize Speaker N/Person N tham chiếu cùng raw key, không đổi lời thoại và không thay lặp.
-- Áp dụng ở OutputPage, export/copy, avatar và modal thêm task. Filter/select lưu raw values, chỉ đổi label; summary null cũng export Person N.
-- Thêm control inline tối thiểu sửa assignee trong bảng action items vì hiện không có editor; hỗ trợ speaker raw key, tên tự do và Unknown, tái dùng callback hiện có. Không thêm màn hình hoặc chỉnh danh tính toàn cục.
-- Giữ normalization server và boundary load nhất quán; JSON giữ raw IDs. Không chỉnh các chức năng Ask AI ngoài tác động dùng helper chung.
-- Xong khi TC-004/005/008 quan sát tên nhất quán, phân biệt tên trùng, thao tác task chỉ đổi task; search/filter/jump không bị đổi định danh.
+Phụ thuộc contract mapping không đổi của S1. Đối chiếu UI/copy/export và luồng snapshot/regenerate/cache theo Design §2–3; chỉ sửa gap thực sự ảnh hưởng yêu cầu mới. Tên mới thay đồng bộ summary/map, raw text/timestamp giữ nguyên. Regenerate lỗi giữ bản thành công trước. Load cache không tự gọi AI; kết quả cũ cần regenerate chủ động để áp dụng prompt mới.
 
-## T3 — Khôi phục dữ liệu cũ và retry đồng bộ
+Đối chiếu finding lịch sử cache prose restore và custom assignee với code hiện hành trước khi coi còn thiếu hoặc đã sửa; chỉ nhận phần liên quan tính nhất quán, không mở refactor. Hoàn tất qua TC-004/010/011 và assertion reload/export của TC-016, không chỉ đọc helper.
 
-Phụ thuộc contract T1/T2.
+## S3 — Kiểm chứng ca thực tế và bàn giao kết quả
 
-- Thêm boundary parse/normalize cache schema 3 dùng chung cho `app/results/page.tsx` và `components/MeetingWorkspace.tsx`; thiếu speakerNames/entry hợp lệ → null. Field sai kiểu và cache version khác tiếp tục bị từ chối.
-- Giữ `isStoredMeetingResult` là kiểm tra chặt sau normalization. Không chỉ biến field thành optional trong types để che dữ liệu chưa chuẩn hóa.
-- Chuẩn hóa prose lúc restore theo bảng hợp lệ; giữ transcript, key storage và ưu tiên memory. Retry replace toàn summary bằng persist hiện có; không merge bảng cũ vào kết quả mới.
-- Xong khi TC-006/008 chứng minh cache/reload/failure giữ đúng dữ liệu, không thêm AI request khi restore và không phiên âm khi retry.
+Phụ thuộc S1/S2; có thể chuẩn bị input/evidence trước. Chép nguyên notes trong ảnh vào fixture dữ liệu không chứa key; xác nhận transcript tương ứng ảnh có phải extracted-example.json không. Không đoán tên từ chữ đọc không rõ. Lập expected mapping/bằng chứng độc lập trước gọi AI; đây là công việc kiểm chứng, không yêu cầu nhập mapping trong sản phẩm.
 
-## Verification sau triển khai
+Chạy live TC-014–016 và regression bị ảnh hưởng; ghi từng request/run, revision, notes/input reference, expected/actual từng label, nguồn và timestamp hỗ trợ, lỗi/provider limitation. Nếu chưa có căn cứ cho một label trong mẫu thực, ghi chính xác gap; không đánh cả case pass bằng toàn null. Ca dương tổng hợp không thay TC-016. Provider lỗi là chưa xác nhận chất lượng, không sửa output trước nghiệm thu.
 
-Thực hiện [Test Specification](Test-Specification.md) và lưu `Verification-Results.md` với revision thực tế, thay đổi, checks, từng ca pass/fail/not-run và evidence. Không thêm unit tests theo mặc định. Commands sẵn có: `bunx tsc --noEmit`, `bun run lint`, `bun run build` (scripts trong package.json). Đây là kế hoạch, chưa chạy commands.
+Checks hiện có sau code change: `npx --no-install tsc --noEmit`, `npm run lint`, `npm run build`. Không thêm unit tests theo mặc định. Lưu kết quả mới vào [Verification Results](Verification-Results.md), phân biệt lịch sử; không tự đổi verdict cũ thành pass. Nếu inference không đạt, phân loại nguyên nhân rồi điều chỉnh trong scope hoặc đề xuất design mới nếu cần thay kiến trúc.
 
-Thứ tự: T1 → T2 → T3 → verification. Có thể kiểm chứng AI của T1 trước khi T2/T3 hoàn tất để phát hiện sớm vấn đề chất lượng. Không chờ live provider để làm các thay đổi deterministic. Chưa có quyền triển khai, commit, deploy hoặc chạy functional tests trong lượt planning này.
+## Trình tự và ranh giới
 
-## Bổ sung N1–N3 — notes và regenerate (chưa triển khai)
-
-Baseline T1–T3 đã có code ở HEAD `28a54c1`; không triển khai lại máy móc. Đối chiếu defects/prerequisites trong Verification Results lịch sử khi chạm bề mặt liên quan; chưa coi baseline đã nghiệm thu.
-
-### N1 — Nhận notes và tạo summary có căn cứ
-
-Mở rộng types/summary route/Gemini theo Technical Design §4: optional meetingNotes, validation 10.000 ký tự, prompt hai nguồn có phân biệt, explicit correction precedence, map chỉ raw labels thật. Giữ omitted/empty backward compatible và summary response hiện có. Giữ transcript budget, timeout, key handling, no_speech. Hoàn tất khi request hợp lệ đưa đủ hai nguồn vào một inference, input sai trả 400 trước provider; TC-009/012/013 là verification dự kiến.
-
-### N2 — Notes xuyên suốt workspace/results và cache
-
-Theo contract N1; có thể chuẩn bị UI song song về mặt trình tự công việc. Thêm textarea trước Process và đầu Results, truyền cùng checkpoint/session/result, persist notes đang chỉnh và summaryNotes đã áp dụng. Cập nhật validator/cache boundary cho field optional; JSON giữ snapshot và notes. Kết quả cũ dùng rỗng, cache lỗi giữ memory, cuộc họp mới rỗng. Hoàn tất khi notes đi từ pre-input tới lần summary đầu, reload và export, hiện trạng chưa áp dụng khi sửa; TC-009/013.
-
-### N3 — Tạo lại summary thành công/lỗi an toàn
-
-Phụ thuộc N1/N2. Mở Generate/Retry hiện có cho completed thành Regenerate; đưa notes snapshot vào mọi summary request. Results owner áp dụng functional update nguyên tử, giữ kết quả cũ nếu lỗi. Disable thao tác xung đột lúc pending, cleanup/ignore stale completion; nêu rõ thay tasks/sửa thủ công. Không gọi extraction và không tạo lại chỉ từ notes khi no_speech. Hoàn tất khi TC-010/011 quan sát được cả success/failure/retry và tên đồng bộ mọi bề mặt.
-
-Sau N1 → N2 → N3, chạy checks sẵn có và test spec liên quan; ghi evidence mới, không ghi đè kết quả lịch sử như thể cùng revision. Không thêm unit tests, không triển khai code/chạy functional tests trong lượt planning này.
+S1 → S2 → live verification S3; chuẩn bị evidence S3 độc lập. Không có blocker coding; nghiệm thu S3 phụ thuộc notes/transcript chính xác, provider live và đáp án độc lập. Lượt gọi skill hiện tại chỉ lập kế hoạch, không code/test/commit/deploy. Yêu cầu sửa tính năng ở lượt trước được giữ làm bối cảnh ủy quyền; hoàn tất planning không tự chuyển sang implementation/review hoặc cấp quyền deploy.

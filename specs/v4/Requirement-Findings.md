@@ -1,8 +1,25 @@
 # Requirement Findings — v4
 
+## Cập nhật hiện hành — 2026-11-06
+
+Nguồn quyết định: user yêu cầu “từ note này phải nhận diện được”, không bắt người nghe tự gán Person 1/2/3; [PRD §10](PRD.md). Khảo sát branch main, HEAD `3959b413d02d9fcc364cfcc02a4f304bb345c7fe` và working diff prompt/helper từ lượt trước. Không chạy test trong planning.
+
+- **Yêu cầu đủ rõ để thiết kế:** roster trong notes là đầu vào suy luận, không phải mapping bắt buộc. Kết hợp toàn hội thoại, đáp lời tự nhiên, demo, vai trò; vẫn không tự ghép theo vị trí hoặc số lượng.
+- **Xung đột đã giải quyết bằng yêu cầu mới:** điều kiện cũ chỉ nhận xác nhận danh tính trực tiếp đã quá chặt. Phân biệt “danh sách tự nó không phải mapping” với “danh sách kết hợp hội thoại có thể xác định người nói”. PRD/Design/Test được cập nhật tương ứng.
+- **Hiện trạng chưa phải kết quả đạt:** summary API đã nhận meetingNotes; regenerate gửi snapshot; diff trước đã sửa prompt/helper. Chưa có lượt Gemini thực với notes trong ảnh. Ảnh chứng minh UI vẫn có Person N, không chứng minh nguyên nhân duy nhất là prompt, cache hay phiên bản deploy.
+- **Nghiệm thu không được bằng toàn null:** thêm ca dương roster + ngữ cảnh rõ, tên chỉ có trong notes, thứ tự roster thay đổi và ca thực tế của user. Ca không có căn cứ vẫn cần null để tránh đổi lỗi bỏ sót thành lỗi gán nhầm.
+- **Phụ thuộc evidence, không phải quyết định sản phẩm:** cần chép đúng notes trong ảnh, xác nhận transcript tương ứng, key/quota live qua cơ chế hiện có, và đáp án độc lập. Người kiểm chứng lập evidence không có nghĩa sản phẩm bắt user tự gán speaker. Thiếu các nguồn này chặn nghiệm thu thực tế, không chặn chuẩn bị implementation.
+
+Không mở rộng sang voice biometrics, sửa diarization, thêm model/provider hoặc dịch vụ danh tính. Nếu prompt hiện tại không đạt ca thực tế, ghi fail và đánh giá nguyên nhân trước khi đề xuất thay kiến trúc. Không có quyết định sản phẩm chặn lập kế hoạch phạm vi hiện tại.
+
+---
+
+Phần dưới là khảo sát lịch sử theo các revision được ghi, không dùng như backlog hiện hành hoặc bằng chứng các lỗi vẫn còn.
+
+
 Ngày: 2026-11-06. Nguồn: [PRD](PRD.md), khảo sát code tại revision `5660e5f6636bdba0c0790d9789be3008aae61f09`. Chưa chạy kiểm thử.
 
-## Kết luận
+## Kết luận lịch sử — trước yêu cầu suy luận từ roster
 
 Yêu cầu đủ rõ để thiết kế và chia task trong phạm vi demo. Không có quyết định sản phẩm đang chặn planning. Thiết kế dưới đây là đề xuất, chưa phải quyết định đã được duyệt hay kết quả đã kiểm chứng.
 

@@ -1,8 +1,14 @@
 # PRD v4 — Notes bổ sung, brief và tên người tham gia
 
 Ngày: 2026-11-06  
-Trạng thái: Bổ sung yêu cầu notes ngày 2026-11-06; baseline tên đã có triển khai và kết quả review riêng, phần notes chưa triển khai/nghiệm thu.  
+Trạng thái: Cập nhật suy luận danh tính từ notes và hội thoại ngày 2026-11-06; baseline notes/regenerate đã có code, yêu cầu nhận diện mới chưa được nghiệm thu live.
 Phạm vi: Kết hợp transcript extracted với notes người dùng để brief cuộc họp, xác định đúng tên và tạo lại summary khi cần.
+
+## Yêu cầu cập nhật — suy luận danh tính từ notes và hội thoại (2026-11-06)
+
+Yêu cầu trực tiếp mới nhất của user thay thế các điều kiện cũ bên dưới nếu xung đột: hệ thống phải chủ động kết hợp danh sách người tham gia trong notes với toàn bộ hội thoại để xác định tên. Không yêu cầu người dùng nghe lại rồi gán Person/Speaker N. Câu đáp tự nhiên, người tiếp tục demo và vai trò phù hợp là bằng chứng hợp lệ; không bắt buộc tự giới thiệu hay nhắc lại tên trong câu đáp. Tên có thể chỉ xuất hiện trong notes. Không ghép theo thứ tự danh sách hoặc số lượng; chỉ giữ nhãn trung lập khi xét cả hai nguồn vẫn chưa đủ căn cứ hoặc mâu thuẫn.
+
+Nghiệm thu: notes chỉ chứa tên/vai trò + transcript có gọi tên/đáp lời/demo phải tạo bảng tên tương ứng, áp dụng nhất quán lên kết quả. Danh sách không có bất kỳ ngữ cảnh phân biệt nào không được tự gán theo thứ tự. Regenerate dùng transcript hiện có và notes mới nhất.
 
 ## 1. Mục tiêu
 
@@ -27,7 +33,7 @@ Không dùng file mẫu làm bảng đáp án danh tính. Trước nghiệm thu,
 |---|---|
 | Môi trường | Demo local trên desktop Chrome, một người dùng, một cuộc họp mỗi lượt |
 | Đầu vào | Transcript do luồng phiên âm hiện có tạo ra; ưu tiên hội thoại tiếng Việt có xen thuật ngữ tiếng Anh |
-| Nguồn xác định tên | Nội dung/ngữ cảnh hội thoại và ghi chú hoặc đính chính danh tính rõ ràng do user cung cấp cho cuộc họp |
+| Nguồn xác định tên | Toàn hội thoại kết hợp danh sách tên/vai trò/bối cảnh trong notes; không yêu cầu mapping thủ công |
 | Kết quả chính | Tên có căn cứ thay cho “Person N”; người chưa rõ tên vẫn có nhãn ổn định |
 | Cách thực hiện | Tận dụng bước tạo summary và bảng ánh xạ hiện có; không yêu cầu thêm lượt gọi AI riêng |
 | Retry / regenerate | Dùng transcript đang có + notes mới nhất để tạo lại cả summary và bảng tên, kể cả khi summary trước đã thành công; không phiên âm lại |
@@ -37,7 +43,7 @@ Không dùng file mẫu làm bảng đáp án danh tính. Trước nghiệm thu,
 ### Ngoài phạm vi
 
 - Nhận diện bằng giọng nói/sinh trắc học, hồ sơ người dùng, danh bạ hoặc danh sách nhân sự bên ngoài.
-- Màn hình quản lý/gán danh tính riêng hoặc quản lý danh tính qua nhiều cuộc họp. Notes được phép chứa tên, vai trò và đính chính speaker rõ ràng; danh sách tên đơn thuần không đủ để gán speaker.
+- Màn hình quản lý/gán danh tính riêng hoặc quản lý danh tính qua nhiều cuộc họp. Notes chứa tên/vai trò được dùng làm ứng viên để suy luận qua hội thoại; không ghép tên theo thứ tự danh sách.
 - Sửa diarization, tách/gộp speaker hoặc suy đoán ai đang nói bằng audio trong bước summary.
 - Hiển thị điểm tin cậy, bảng giải thích danh tính hoặc evidence viewer mới. Bằng chứng được ghi trong kết quả kiểm tra nghiệm thu.
 - Đảm bảo nhận ra tên tất cả người tham gia, đạt một tỷ lệ chính xác trên mọi cuộc họp, hoặc tự khôi phục tên khi summary thất bại.
@@ -59,8 +65,8 @@ Không dùng file mẫu làm bảng đáp án danh tính. Trước nghiệm thu,
 | Tình huống | Hành vi yêu cầu |
 |---|---|
 | Tự giới thiệu rõ, ví dụ “Mình là Alex” | Có thể gán Alex cho speaker nói câu đó nếu không có bằng chứng mâu thuẫn |
-| Gọi đích danh và có câu đáp xác nhận rõ | Có thể gán cho speaker đáp lời khi ngữ cảnh xác định duy nhất người được gọi |
-| Chỉ gọi tên, ví dụ “Bob demo luôn đi” | Chưa đủ để gán Bob cho người nói câu đó hoặc người nói ngay sau |
+| Gọi đích danh và đáp lời tự nhiên, tiếp tục demo hoặc thực hiện yêu cầu | Gán tên khi toàn ngữ cảnh hỗ trợ người được gọi; không bắt buộc nhắc lại tên trong câu đáp |
+| Gọi tên, ví dụ “Bob demo luôn đi” | Xét câu đáp, demo và các trao đổi sau để xác định người được gọi; không gán cho người gọi hoặc người nói kế tiếp chỉ vì vị trí |
 | Nhắc người thứ ba, ví dụ “Alex có làm cái đó” | Không gán Alex cho speaker đang nói chỉ từ câu này |
 | Có nhiều người đáp, nói chồng hoặc chuyển chủ đề | Giữ chưa xác định nếu không phân biệt được người đáp |
 | Bằng chứng mâu thuẫn hoặc một nhãn có dấu hiệu chứa nhiều người | Không ép một tên đại diện cho cả nhãn; giữ nhãn trung lập |
@@ -140,14 +146,14 @@ Phần này bổ sung FR-01–04; quy tắc nguồn danh tính và regenerate b�
 ### FR-05 — Một nội dung notes, hai điểm chỉnh sửa
 
 - Có textarea tùy chọn tại màn hình record/upload trước Process Meeting, và tại đầu Results, trước phần summary. Hai vị trí chỉnh cùng notes của cuộc họp, không phải hai nguồn độc lập. Không cần notes để xử lý audio.
-- Placeholder gợi ý bối cảnh, thuật ngữ và đính chính: “Speaker 1 là Alex; Speaker 2 là Bob; Nexus là tên dự án”. Chỉ gán speaker khi user nêu liên kết rõ; “Người tham gia: Alex, Bob” không đủ xác định ai nói.
+- Placeholder gợi ý tên/vai trò và bối cảnh: “Cuộc họp gồm Alex (backend), Bob (frontend), Alice (PM). Nexus là tên dự án”. AI tự liên kết danh sách này với hội thoại, không yêu cầu user biết số speaker. Mapping thủ công vẫn được hỗ trợ nếu user chủ động cung cấp.
 - Notes được chuyển cùng kết quả khi điều hướng, lưu bằng cơ chế cache best effort hiện có và có trong JSON export. Kết quả schema 3 cũ thiếu notes mở với chuỗi rỗng. Không dùng lại notes cuộc họp trước khi bắt đầu cuộc họp mới.
 - Giới hạn đề xuất cho demo: 10.000 ký tự notes; vượt giới hạn hoặc sai kiểu phải báo rõ và không gọi AI, không cắt âm thầm. Ghi notes không tự kích hoạt inference.
 
 ### FR-06 — Kết hợp dữ liệu có phân biệt nguồn
 
 - Tạo brief và các trường summary hiện có từ toàn transcript + notes, trong cùng một lượt summary AI. Không thêm định dạng brief hay pipeline extraction riêng.
-- User có thể đính chính rõ tên/thuật ngữ và bổ sung bối cảnh bị thiếu. Đính chính danh tính rõ ràng được ưu tiên hơn suy luận từ transcript; notes mơ hồ hoặc tự mâu thuẫn không đủ để gán tên. Speaker không tồn tại không được tạo mới.
+- AI phải chủ động suy luận tên từ cả notes và toàn hội thoại, kể cả tên chỉ có trong notes, dựa trên gọi–đáp tự nhiên, phần demo và vai trò/trách nhiệm. Không đòi tự giới thiệu hoặc câu xác nhận danh tính. Đính chính rõ được ưu tiên; không tự ghép theo thứ tự/số lượng. Chỉ để null khi kết hợp hai nguồn vẫn thiếu căn cứ hoặc mâu thuẫn. Không tạo speaker mới từ tên trong notes.
 - Nội dung chỉ có trong notes được nêu là bối cảnh/đính chính do user bổ sung trong phần summary phù hợp; không trình bày như lời nói hoặc quyết định đã được mọi người đồng ý. Không tạo timestamp/key moment giả cho thông tin chỉ có trong notes.
 - Notes là dữ liệu, không phải chỉ dẫn hệ thống. Nội dung yêu cầu bỏ qua quy tắc, tiết lộ key hoặc tự tạo quyết định không được thực thi. Không đổi lời thoại raw/timestamp khi sửa tên hiển thị.
 
@@ -170,3 +176,15 @@ Phần này bổ sung FR-01–04; quy tắc nguồn danh tính và regenerate b�
 | AC-16 | Notes quá dài/sai kiểu, cache cũ, JSON export, cuộc họp mới | Báo validation rõ trước AI; cache cũ thiếu notes dùng rỗng; JSON giữ notes và bản đã áp dụng; cuộc họp mới không kế thừa notes cũ |
 
 DoD bổ sung: hoàn thành AC-11–16 với kết quả thực thi riêng; kết quả verification lịch sử không chứng minh phần notes. Giới hạn 10.000 ký tự, khóa chỉnh sửa trong lúc chờ và thay toàn bộ tasks là lựa chọn thiết kế đề xuất cho demo, không phải quyết định đã được user phê duyệt riêng.
+
+
+## 10. Acceptance bổ sung — tự nhận diện từ notes (P0)
+
+| ID | Ca kiểm tra | Kết quả đạt |
+|---|---|---|
+| AC-17 | Notes chỉ chứa tên/vai trò, hội thoại có gọi–đáp và demo, không tự giới thiệu | Tên đúng được gán tự động cho mọi speaker có căn cứ; không yêu cầu mapping thủ công; không nghiệm thu bằng toàn null |
+| AC-18 | Tên chỉ có trong notes, hội thoại phân biệt vai trò/trách nhiệm | Liên kết đúng qua ngữ cảnh, không ghép theo thứ tự danh sách; đổi thứ tự notes không làm đổi danh tính |
+| AC-19 | Danh sách không có ngữ cảnh phân biệt, có người vắng mặt hoặc bằng chứng mâu thuẫn | Không ép dùng hết tên hoặc coi số tên bằng số speaker là đủ; giữ null ở nhãn thực sự không xác định |
+| AC-20 | Notes nguyên văn trong ảnh lỗi + toàn transcript tương ứng, Regenerate | Kiểm chứng nhận diện từng người bằng bằng chứng độc lập; không yêu cầu user nghe rồi điền Person N. Người có căn cứ phải nhận đúng, null không có lý do là chưa đạt; giữ raw transcript/timestamp và cập nhật tên nhất quán |
+
+AC-20 là điều kiện nghiệm thu thực tế, không được thay bằng static checks hoặc ví dụ tổng hợp. Cần xác minh transcript mẫu có tương ứng cuộc họp trong ảnh; nếu không, lấy transcript của kết quả đó qua cơ chế hiện có. Đáp án kiểm chứng do người thực thi lập từ nguồn độc lập trước khi xem output AI, không phải bước nhập mapping bắt buộc trong sản phẩm.

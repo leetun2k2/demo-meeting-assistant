@@ -1,6 +1,6 @@
 # Test Specification — v4
 
-Ngày: 2026-11-06. Trạng thái: Chưa thực thi. Nguồn: [PRD](PRD.md), [Technical Design](Technical-Design.md).
+Cập nhật: 2026-11-06. Ca mới TC-014–016 chưa thực thi; kết quả ca cũ xem Verification Results, không suy ra đã pass yêu cầu mới. Nguồn: [PRD](PRD.md), [Technical Design](Technical-Design.md).
 
 ## Scope và chuẩn bị chung
 
@@ -86,7 +86,7 @@ Cleanup: gỡ mọi interception; khôi phục cache sau suite.
 
 Điều kiện: F4 và đánh giá độc lập sẵn sàng. Chain: POST summary với nguyên transcript F4 → lưu summary không có key → đối chiếu từng entry với bảng bằng chứng chuẩn bị trước → có thể nạp result để xem UI.
 
-Assertions: không cắt transcript; chỉ ba raw labels thật; từng tên có bằng chứng ngữ cảnh và không gán vì tên được nhắc; không xác định thì null. Ghi timestamp/câu hỗ trợ hoặc lý do chưa rõ cho cả ba speaker. Không bắt buộc mẫu này nhận ra ít nhất một tên; TC-001 chịu trách nhiệm ca dương. Không có đáp án độc lập thì ca chưa nghiệm thu, không tự đánh pass.
+Assertions: không cắt transcript; chỉ ba raw labels thật; từng tên có bằng chứng ngữ cảnh và không gán vì tên được nhắc; không xác định thì null. Ghi timestamp/câu hỗ trợ hoặc lý do chưa rõ cho cả ba speaker. Ca này kiểm tra baseline không notes. Không dùng ca này thay TC-016 với notes của user; ca mới có nghĩa vụ nhận đúng các danh tính có căn cứ từ hai nguồn. Không có đáp án độc lập thì ca chưa nghiệm thu, không tự đánh pass.
 
 Cleanup: không cần phiên âm lại audio; giữ evidence theo chính sách repo, không lưu secrets.
 
@@ -108,7 +108,7 @@ Chưa có F1 audio và ground truth mẫu dài được xác nhận trong planni
 
 ## Bổ sung notes — contract và ca chưa thực thi
 
-Contract **dự kiến sau triển khai**: summary POST nhận thêm `meetingNotes?: string`; thiếu/rỗng hợp lệ, sai kiểu hoặc >10.000 ký tự trả 400 trước provider. MeetingResult thêm meetingNotes/summaryNotes optional theo Design §4. Các mô tả endpoint trước phần này là baseline đã khảo sát, không chứng minh notes hiện có.
+Contract hiện có tại HEAD `3959b413` (đã đọc code, chưa chạy lại trong planning): summary POST nhận thêm `meetingNotes?: string`; thiếu/rỗng hợp lệ, sai kiểu hoặc >10.000 ký tự trả 400 trước provider. MeetingResult thêm meetingNotes/summaryNotes optional theo Design §4. Các mô tả endpoint trước phần này là baseline đã khảo sát, không chứng minh notes hiện có.
 
 Fixture N: transcript hai raw labels không tự giới thiệu, Speaker 1 nhận sửa login, Speaker 2 nhắc tên người thứ ba Minh. Notes A: “Speaker 1 là Khánh; Speaker 2 là Long. Bối cảnh bổ sung: Nexus là tên dự án.” Notes B đổi rõ Speaker 1 là Lan. Đáp án tên do fixture cung cấp, không lấy từ output AI. Dùng key live cho kiểm tra ngữ nghĩa; interception chỉ chứng minh UI/error/validation. Dùng profile/cache demo và cleanup chung của suite.
 
@@ -122,7 +122,7 @@ Fixture N: transcript hai raw labels không tự giới thiệu, Speaker 1 nhậ
 
 ### TC-009 — Notes đầu vào
 
-Preconditions: audio test có transcript đáp án độc lập và notes xác định đúng raw label; raw labels phải được xác nhận sau extraction, không mặc định thứ tự provider. Có thể dùng fixture N ở boundary summary để kiểm chứng riêng prompt, ghi rõ không thay thế audio chain.
+Preconditions: audio test có transcript đáp án độc lập và notes chứa tên/vai trò; dùng hội thoại phân biệt danh tính, không bắt user nhập raw mapping. Raw labels được người kiểm chứng đối chiếu sau extraction, không mặc định thứ tự provider. Ca mới TC-014–016 là acceptance bắt buộc cho suy luận từ roster; fixture N explicit mapping chỉ kiểm tra tương thích. Có thể dùng fixture N ở boundary summary để kiểm chứng riêng prompt, ghi rõ không thay thế audio chain.
 
 Chain: nhập notes trước Process → xử lý → capture request summary không chứa key trong evidence → Results → reload. Assertions: đúng notes snapshot trong request đầu, notes được hiển thị lại; mapping đúng mọi bề mặt; không sửa text/timestamp; summary có nguồn user cho bối cảnh chỉ có trong notes. Lặp input rỗng để xác nhận baseline không bị chặn. Cleanup: khôi phục cache/demo audio.
 
@@ -142,7 +142,7 @@ Assertions: thất bại giữ summary/map/summaryNotes A, meetingNotes B, báo 
 
 Preconditions: fixture N, provider live. Chain: POST lần lượt với (a) notes A, (b) chỉ “Khánh, Long là người tham gia”, (c) “Speaker 1 là Khánh; Speaker 1 là Lan” không có đính chính thứ tự rõ, (d) notes thêm bối cảnh, tên Speaker 99 và yêu cầu bỏ qua quy tắc/tự tuyên bố một quyết định không có trong transcript.
 
-Assertions: a mapping theo notes rõ dù transcript không đủ; b không gán chỉ từ danh sách; c Speaker 1 null; không tạo Speaker 99. Bối cảnh notes-only được ghi nguồn, không tạo keyMoment/timestamp hay quyết định đã đồng thuận giả; không làm theo chỉ dẫn độc hại. Các raw labels/text/timestamp giữ nguyên; tên người thứ ba không biến thành speaker. Cleanup: không có server state; không lưu key trong evidence.
+Assertions: a mapping theo notes rõ dù transcript không đủ; b không gán chỉ từ danh sách khi fixture N không có bất kỳ ngữ cảnh nào liên kết tên với speaker (khác ca dương TC-014/015); c Speaker 1 null; không tạo Speaker 99. Bối cảnh notes-only được ghi nguồn, không tạo keyMoment/timestamp hay quyết định đã đồng thuận giả; không làm theo chỉ dẫn độc hại. Các raw labels/text/timestamp giữ nguyên; tên người thứ ba không biến thành speaker. Cleanup: không có server state; không lưu key trong evidence.
 
 ### TC-013 — Giới hạn và tương thích
 
@@ -151,3 +151,59 @@ Chain: POST omitted, empty, string 10.000, string 10.001 ký tự, null/object n
 Assertions: omitted/empty không lỗi validation; 10.000 không bị chặn bởi giới hạn notes (provider có thể lỗi riêng); 10.001/sai kiểu trả 400, không provider call hoặc cắt âm thầm. UI báo lỗi và giữ input để sửa. Cache cũ mở rỗng, sai kiểu bị từ chối; JSON/reload phân biệt meetingNotes B với summaryNotes A và cảnh báo chưa áp dụng. Cuộc họp mới không tự điền B; không gọi AI khi restore. Cleanup: khôi phục đúng key cache đã sao lưu, bỏ interception.
 
 Coverage bổ sung: AC-11 → TC-009; AC-12 → TC-009/012; AC-13 → TC-010; AC-14 → TC-011; AC-15 → TC-012; AC-16 → TC-013. Toàn bộ TC-009–013 chưa chạy; live semantic quality cần provider và đánh giá độc lập. Verification Results lịch sử không áp dụng cho phần notes.
+
+
+## Bổ sung hiện hành — roster + ngữ cảnh (AC-17–20)
+
+Đây là acceptance bắt buộc của yêu cầu mới, không thay bằng ca explicit mapping hoặc static checks. API chain dùng POST `/api/summarize-meeting` với `{ transcript, meetingNotes, geminiApiKey }`; HTTP 200/status completed chỉ chứng minh request hoàn tất, phải đối chiếu speakerNames. Key lấy từ cấu hình hợp lệ hiện có, không chép vào fixture/evidence. Các đoạn tổng hợp dưới đây dùng startMs/endMs tăng dần, không chồng lấn; người thực thi lưu payload chính xác đã dùng khi chạy. Không có kết quả thực thi trong lượt planning này.
+
+| ID | Kịch bản | Ưu tiên | Kết quả bắt buộc |
+|---|---|---|---|
+| TC-014 | Roster không mapping + gọi–đáp/demo tự nhiên | Critical | Đúng cả ba tên, không tự giới thiệu hoặc xác nhận tên trực tiếp |
+| TC-015 | Vai trò, tên chỉ ở notes, đảo roster và người vắng mặt | Critical | Tên đúng theo ngữ cảnh, không theo thứ tự/số lượng; không tạo speaker mới |
+| TC-016 | Notes nguyên văn và cuộc họp trong ảnh lỗi | Critical | Nhận đúng danh tính có căn cứ, đồng bộ UI/export, không yêu cầu mapping thủ công |
+
+### TC-014 — Gọi tên rồi đáp tự nhiên
+
+Purpose: phát hiện lỗi prompt quá chặt, chỉ chấp nhận “tôi là X”. Preconditions: provider live; notes chỉ “Người tham gia: Lan, Minh, Huy.”; transcript tổng hợp:
+
+1. Speaker 1: “Lan mở bản thiết kế màn hình đăng nhập cho mọi người xem nhé.”
+2. Speaker 2: “Em đang chia sẻ bản thiết kế của em. Màn hình đăng nhập có hai bước.”
+3. Speaker 1: “Cảm ơn Lan. Minh demo API đăng nhập tiếp nhé.”
+4. Speaker 3: “API em làm trả access token ở đây. Em đang chạy request demo.”
+5. Speaker 2: “Huy chốt giúp em lịch bàn giao nhé.”
+6. Speaker 1: “Anh chốt thứ Sáu, anh sẽ gửi lịch bàn giao cho cả nhóm.”
+7. Speaker 3: “Cảm ơn Huy. Lan gửi lại bản thiết kế để em đối chiếu API nhé.”
+8. Speaker 2: “Em gửi bản thiết kế ngay sau cuộc họp.”
+
+Chain: POST với transcript và notes → lưu response bỏ key → đối chiếu mapping và task tự nhận → lặp với notes “Người tham gia: Huy, Lan, Minh.” và cùng transcript.
+
+Assertions: Speaker 1 = Huy, Speaker 2 = Lan, Speaker 3 = Minh ở cả hai lượt; không null, không gán tên người gọi cho người được gọi; bảng đúng ba labels, không sửa raw text/timestamp. Nội dung summary không bắt buộc giống từng chữ. Không chấp nhận prompt/response fixture thay live inference.
+
+Cleanup: không có server state; giữ payload không key và evidence kết quả. Nếu nạp result vào UI thì khôi phục đúng cache demo sau suite.
+
+### TC-015 — Vai trò và roster không phải thứ tự speaker
+
+Preconditions: provider live. Notes “Lan phụ trách thiết kế UI; Minh phụ trách API backend; Huy điều phối sản phẩm.” Transcript không nhắc tên: Speaker 1 “Phần API backend do em phụ trách, endpoint đăng nhập em đã làm xong. Em sẽ gửi tài liệu API.”; Speaker 2 “Em phụ trách thiết kế UI. Em sẽ gửi bản thiết kế màn hình đăng nhập.”; Speaker 3 “Anh điều phối sản phẩm. Anh sẽ chốt lịch bàn giao với cả nhóm.”
+
+Chain: POST → kiểm tra mapping → đảo thứ tự ba người trong notes và POST lại → thêm “Hoa là khách mời nhưng vắng mặt hôm nay” rồi POST → chạy ca âm với cùng ba tên nhưng bỏ mọi vai trò khỏi notes và thay transcript bằng ba lượt chào/xác nhận chung không có manh mối → chạy biến thể notes đính chính mâu thuẫn cho Speaker 1 theo TC-012.
+
+Assertions: ca có vai trò nhận Speaker 1 = Minh, Speaker 2 = Lan, Speaker 3 = Huy, kể cả đảo roster/thêm Hoa; không tạo label Hoa. Ca âm ba nhãn đều null, không gán theo thứ tự/số lượng hoặc loại trừ khi chưa biết ai là ai. Mâu thuẫn trực tiếp giữ label liên quan null. Tên notes-only được dùng hợp lệ nhưng không tự viết rằng các speaker đã nói tên đó trong transcript; không tạo keyMoment chứng minh việc tự giới thiệu không tồn tại.
+
+Cleanup: như TC-014; các request độc lập, không kế thừa mapping từ lần chạy trước.
+
+### TC-016 — Tái hiện kết quả user báo lỗi
+
+Preconditions: [ảnh kết quả](demo-meeting-assistant.vercel.app_results.png); notes được chép nguyên văn/đối chiếu đọc rõ, không tự thay bằng mapping. Xác nhận [transcript mẫu](extracted-example.json) có tương ứng ảnh hay lấy transcript đúng từ JSON export/result hiện có. Không dùng ảnh làm nguồn duy nhất cho toàn transcript. Chuẩn bị bảng expected raw label → tên và trích đoạn/bằng chứng độc lập trước xem model output; ghi phần còn thiếu rõ ràng. Key/quota live qua cơ chế hiện có. Thiếu input/expected ghi NOT_RUN phần phụ thuộc, không PASS.
+
+Chain: dùng transcript đúng và notes nguyên văn → POST summary live để tách chất lượng inference khỏi UI → lưu output không key, expected/actual/evidence cho từng label → trên profile demo nạp/mở result tương ứng qua cơ chế hiện có → giữ bản raw ban đầu → giữ notes roster (không thêm mapping) → Regenerate → quan sát network, transcript/filter/chart/summary/task/email/copy/Markdown/JSON → reload.
+
+Assertions: mọi tên có căn cứ phải nhận đúng; sai tên hoặc null cho label có căn cứ là FAIL. Không đánh pass ca thực tế bằng toàn null hoặc chỉ vì schema hợp lệ. Nếu một nhãn thật sự thiếu bằng chứng, ghi khoảng trống và mức nghiệm thu chưa hoàn tất cho mục tiêu thực tế; không bắt user tự nghe và nhập mapping để vượt qua ca. Request regenerate đúng một summary với nguyên notes/transcript, không process/upload/transcribe. Tên được cập nhật đồng bộ, raw speaker/text/timestamps giữ nguyên, snapshot notes đúng, reload giữ kết quả nếu cache ghi thành công. Nếu local đạt nhưng trang đang deploy vẫn lỗi, ghi rõ revision/environment khác biệt, không tự deploy.
+
+Cleanup: backup/restore riêng `meeting-assistant.lastResult` trên profile demo; bỏ interception nếu có; không xóa API key hoặc cache người dùng ngoài phạm vi; giữ evidence không secrets tại Verification Results.
+
+## Coverage cập nhật và giới hạn
+
+AC-17 → TC-014; AC-18 → TC-015; AC-19 → TC-012/015; AC-20 → TC-016; AC-05/10/13/14 → regression TC-004/010/011 và TC-016. Các ca cũ còn hợp lệ trừ mô tả transcript-only/cấm suy luận roster đã được yêu cầu mới thay thế.
+
+Không có đáp án được xác nhận cho cuộc họp trong ảnh trong lượt planning này. Prompt diff đã có không chứng minh TC-014–016 pass; key/quota, transcript tương ứng và expected độc lập là prerequisite cho thực thi. Ca tổng hợp không đủ để đóng lỗi user. Không thêm unit tests hoặc framework.

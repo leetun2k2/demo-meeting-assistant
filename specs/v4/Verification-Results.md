@@ -161,3 +161,43 @@ Khi dựng ca TC-011, agent đã ghi đè `localStorage['meeting-assistant.gemin
 - TC-013: giới hạn 10.000/10.001 ký tự ở route và validation kiểu dữ liệu sai (`null`/object) chưa có bằng chứng request thật; chỉ xác nhận qua đọc code (`app/api/summarize-meeting/route.ts`) rằng logic kiểm tra tồn tại trước lời gọi provider.
 - Chưa test khóa textarea/nút trong lúc `retryingSummary` đang pending bằng quan sát trực tiếp (request hoàn tất quá nhanh để bắt kịp qua công cụ trình duyệt tự động); đã xác nhận qua đọc code rằng các control liên quan (`textarea`, checkbox, select, nút trạng thái, nút Add Task) đều có `disabled={retryingSummary}`.
 - Chưa test ca double-click Regenerate hoặc điều hướng khỏi `/results` giữa lúc một request đang chờ (token guard `generateTokenRef`/`mountedRef`/so sánh `processedAt` mới chỉ được xác nhận qua đọc code, chưa qua kịch bản race-condition thật).
+
+
+## Triển khai và kiểm chứng v4 — 2026-11-06
+
+### 1. Triển khai S1 (suy luận danh tính từ roster và hội thoại)
+
+- **`lib/meeting/gemini.ts`**:
+  - `buildSpeakerNamesInstruction`: Điều chỉnh chỉ dẫn suy luận kết hợp danh sách tên/vai trò trong notes với toàn bộ diễn biến cuộc họp; cho phép sử dụng ngữ cảnh gọi–đáp tự nhiên, tiếp tục demo, vai trò/trách nhiệm và bằng chứng muộn, kể cả tên chỉ có trong notes. Không đòi hỏi câu đáp phải nhắc lại tên ("Tôi là Bob") hoặc câu giới thiệu trực tiếp. Giữ vững quy tắc: không gán theo thứ tự danh sách/số lượng, không gán tên người thứ ba được nhắc, không gộp nhãn, giữ nguyên tên/dấu tiếng Việt từ notes/transcript và trả `null` khi mâu thuẫn hoặc không đủ căn cứ.
+  - `buildNotesInstruction`: Xác định rõ danh sách người tham gia và vai trò trong notes là dữ liệu ứng viên để đối chiếu với transcript, không phải mapping cố định theo vị trí. Cho phép xử lý đính chính rõ ("Speaker 1 is Alex", "Person 2 là Bob"). Giữ ranh giới an toàn: nội dung chỉ có trong notes được trích xuất như bối cảnh bổ sung, không biến thành lời nói/quyết định thực tế trong cuộc họp và không gán timestamp/keyMoment giả.
+- **`lib/constants.ts`**:
+  - `NOTES_PLACEHOLDER`: Đổi sang `"Cuộc họp gồm Alex (backend), Bob (frontend), Alice (PM). Nexus là tên dự án."` phản ánh bối cảnh roster tự nhiên.
+  - `NOTES_HELPER_TEXT`: Đổi sang `"Optional. Add participant names, roles and meeting context. AI combines these notes with the conversation to identify speakers automatically."` làm rõ AI tự kết hợp danh sách với hội thoại, không bắt người dùng nhập mapping thủ công.
+
+### 2. Triển khai S2 (nhất quán kết quả và xử lý Finding #2)
+
+- **`lib/meeting/cacheCompat.ts`**:
+  - Đã khắc phục triệt để **Finding #2**: `normalizeStoredSpeakerNames` sau khi dựng bảng `speakerNames` chuẩn hóa qua `buildSpeakerNameTable`, tiếp tục chạy `normalizeSpeakerMentions` lên toàn bộ các trường văn bản prose của summary (`executiveSummary`, `title`, `themes`, `keyTakeaways`, `discussions`, `decisions[].text`, `risks[].text`, `unresolvedQuestions[].text`, `keyMoments[].title/description`, `nextSteps`, `followUpEmail.subject/body`).
+  - Đã kiểm chứng tính bất biến và idempotent: nạp fixture chứa tên trùng ("Khánh (Person 1)", "Khánh (Person 2)") và "Person 3", kết quả các trường prose được chuẩn hóa đồng bộ; lần chạy thứ hai trả về kết quả giống hệt; `isStoredMeetingResult` trả về `true`.
+- **`components/OutputPage.tsx`**:
+  - Đối chiếu **Finding #1**: `customAssigneeIdx === idx ? "__custom__" : (isKnownAssigneeOption(item.assignee) ? item.assignee : "__custom__")` đã được áp dụng, đảm bảo trạng thái dropdown không bị nhảy ngược khi người dùng chọn chế độ gõ tên tự do.
+
+### 3. Kiểm chứng tĩnh (Static Verification)
+
+- `npx --no-install tsc --noEmit`: **PASS** (không có lỗi kiểu).
+- `npm run lint`: **PASS** (không có lỗi lint).
+- `npm run build`: **PASS** (Next.js 16.4.5 Turbopack production build thành công toàn bộ routes).
+
+### 4. Chuẩn bị và hiện trạng S3 (Kiểm chứng ca thực tế)
+
+- **Đối chiếu transcript mẫu và ảnh kết quả**:
+  - Đã xác nhận `specs/v4/extracted-example.json` (cuộc họp 32 phút, 322 đoạn) **không tương ứng** với ảnh `specs/v4/demo-meeting-assistant.vercel.app_results.png` (cuộc họp "Email Formatting and HTML Rendering Bug Review", ~03:58 est., 3 speakers).
+  - Đã trích xuất transcript nguyên vẹn từ ảnh bằng OCR thị giác (Apple Vision framework) thành fixture độc lập tại `specs/v4/screenshot-meeting-fixture.json` gồm 61 đoạn hội thoại kèm timestamp và raw speaker labels.
+  - Notes nguyên văn trong ảnh: `"Catchup ngắn giữa BE (Semaj), QA (James) và iOS Dev (Chị 13)."`.
+- **Phân tích độc lập trước chạy AI (Ground Truth Analysis)**:
+  - `Speaker 1` (59% text share): Chủ động nêu lỗi hiển thị link/email, đối chiếu hiển thị giữa Gmail web và Android, trao đổi với Chị Hằng và chỉ ra lỗi hiển thị body của Person 2 -> Vai trò QA (James).
+  - `Speaker 2` (28% text share): Giải thích "chỉ tải body HTML về rồi boot lên view", "sao bản view này nó lỗi", hỏi "API nào, markdown nào", nhận "để em coi thử" -> Vai trò iOS Dev / Dev phụ trách view (Chị 13 hoặc Semaj).
+  - `Speaker 3` (13% text share): Chỉ phát biểu ở đoạn đầu (00:18–00:50), hướng dẫn mở link và phân biệt markdown/HTML -> Có thể là BE (Semaj) giải thích định dạng API trả về.
+- **Tình trạng nghiệm thu live**:
+  - Môi trường hiện tại không lưu cấu hình Gemini API key (`process.env.GEMINI_API_KEY` = null) để bảo mật.
+  - Các ca live inference (TC-014, TC-015, TC-016) được ghi nhận là **PENDING LIVE EXECUTION** (chờ chạy với API key thật qua giao diện người dùng); không tự đánh pass giả định hoặc thay thế bằng static checks.

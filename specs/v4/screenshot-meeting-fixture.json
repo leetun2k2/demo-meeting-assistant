@@ -1,0 +1,307 @@
+[
+  {
+    "startMs" : 0,
+    "speaker" : "Speaker 1",
+    "text" : "Sao cái gì"
+  },
+  {
+    "speaker" : "Speaker 1",
+    "startMs" : 8000,
+    "text" : "Cái gì Cái gì Cái gì"
+  },
+  {
+    "startMs" : 8000,
+    "text" : "Cái link mình gửi cho chị sai kìa. Cái link nội dung email mình gửi qua HTML là sao?",
+    "speaker" : "Speaker 1"
+  },
+  {
+    "text" : "Đâu đâu đâu đâu đâu đâu.",
+    "speaker" : "Speaker 2",
+    "startMs" : 14000
+  },
+  {
+    "text" : "Ở đây. Đây nha, cái link nha. Chị lấy cái này xong lên phải không?",
+    "startMs" : 18000,
+    "speaker" : "Speaker 3"
+  },
+  {
+    "text" : "Hả?",
+    "speaker" : "Speaker 2",
+    "startMs" : 25000
+  },
+  {
+    "speaker" : "Speaker 3",
+    "startMs" : 31000,
+    "text" : "Lấy cái link ở đây nè."
+  },
+  {
+    "startMs" : 31000,
+    "text" : "vào đây vào cái link đó chị thấy nó sẽ bị như thế này.",
+    "speaker" : "Speaker 3"
+  },
+  {
+    "startMs" : 38000,
+    "text" : "Hả? Thì nó là cái email á.",
+    "speaker" : "Speaker 2"
+  },
+  {
+    "text" : "Nhưng mà nó sẽ được format đó. Cái đây nó đang ở dạng markdown.",
+    "speaker" : "Speaker 3",
+    "startMs" : 41000
+  },
+  {
+    "startMs" : 46000,
+    "text" : "Nó đang vậy á.",
+    "speaker" : "Speaker 2"
+  },
+  {
+    "startMs" : 49000,
+    "text" : "Email thẻ nó đang vậy hả?",
+    "speaker" : "Speaker 1"
+  },
+  {
+    "startMs" : 49000,
+    "text" : "Hả? Thì",
+    "speaker" : "Speaker 2"
+  },
+  {
+    "speaker" : "Speaker 3",
+    "startMs" : 50000,
+    "text" : "Không, ý là email là nó ấy nhưng mà email nó đây nè, đây là đang dạng markdown chứ nó không phải là đang ấy. Cái này mình đang ở HTML còn"
+  },
+  {
+    "startMs" : 59000,
+    "speaker" : "Speaker 1",
+    "text" : "Nè, bây giờ á cái email thiệt mở lên nó là vậy hay là nó đã format qua HTML đủ đầy đủ rồi, xuống hàng đầy đủ rồi."
+  },
+  {
+    "speaker" : "Speaker 2",
+    "text" : "Khả năng nó là HTML đó.",
+    "startMs" : 67000
+  },
+  {
+    "text" : "Là nó vậy luôn hả? Vậy thì giờ chị mở lên cái mail y vậy đó coi trên trên web của chị á, trên Gmail á, trên Gmail á.",
+    "speaker" : "Speaker 1",
+    "startMs" : 68000
+  },
+  {
+    "startMs" : 77000,
+    "text" : "Đúng rồi chị, chị mở ra kiếm cái Gmail đó y vậy thử coi cái đó ra làm sao là biết ngay mà.",
+    "speaker" : "Speaker 1"
+  },
+  {
+    "text" : "Chứ em tải về nguyên cái email xong rồi em boot lên thôi mà.",
+    "startMs" : 89000,
+    "speaker" : "Speaker 2"
+  },
+  {
+    "speaker" : "Speaker 1",
+    "startMs" : 89000,
+    "text" : "Đúng rồi, đó thì hồi trước nó vậy thôi."
+  },
+  {
+    "startMs" : 112000,
+    "text" : "Tức là nó đang không có cái email nào nó có hình cho nên là",
+    "speaker" : "Speaker 2"
+  },
+  {
+    "text" : "Không phải.",
+    "speaker" : "Speaker 1",
+    "startMs" : 116000
+  },
+  {
+    "speaker" : "Speaker 2",
+    "startMs" : 116000,
+    "text" : "Là khó"
+  },
+  {
+    "text" : "Nó trùng",
+    "speaker" : "Speaker 1",
+    "startMs" : 117000
+  },
+  {
+    "text" : "khó",
+    "speaker" : "Speaker 2",
+    "startMs" : 117000
+  },
+  {
+    "speaker" : "Speaker 1",
+    "text" : "là cái",
+    "startMs" : 117000
+  },
+  {
+    "speaker" : "Speaker 2",
+    "text" : "cái",
+    "startMs" : 117000
+  },
+  {
+    "text" : "cái cái em gửi qua cho chị Hằng đó đang bị sai Cái đó đang bị hash thành HTML. Chứ nó không phải là hash cái gì.",
+    "speaker" : "Speaker 1",
+    "startMs" : 118000
+  },
+  {
+    "speaker" : "Speaker 2",
+    "startMs" : 126000,
+    "text" : "Hash thành HTML là sao ta?"
+  },
+  {
+    "speaker" : "Speaker 1",
+    "startMs" : 128000,
+    "text" : "Nè, nói chuyện thành HTML xuống hàng này return nè."
+  },
+  {
+    "text" : "Không có đường truyền. Đó. Thấy không?",
+    "startMs" : 146000,
+    "speaker" : "Speaker 1"
+  },
+  {
+    "startMs" : 146000,
+    "text" : "Khả năng là với cái định dạng như thế này á thằng Google nó không hỗ trợ mình rồi.",
+    "speaker" : "Speaker 1"
+  },
+  {
+    "startMs" : 153000,
+    "speaker" : "Speaker 2",
+    "text" : "Khó ta, cái này là đang lấy body HTML của tụi nó về xong rồi mình em boot lên thôi mà chứ em có sửa gì trong đó đâu mà nó lỗi."
+  },
+  {
+    "text" : "Đúng.",
+    "startMs" : 160000,
+    "speaker" : "Speaker 1"
+  },
+  {
+    "startMs" : 167000,
+    "speaker" : "Speaker 2",
+    "text" : "Ừm."
+  },
+  {
+    "text" : "Vậy là khả năng là thằng em lấy body hay là nó cho em. Nhiều khi cái body mà nó cho em là nó nó hash kiểu đó rồi đó.",
+    "speaker" : "Speaker 1",
+    "startMs" : 167000
+  },
+  {
+    "startMs" : 175000,
+    "speaker" : "Speaker 2",
+    "text" : "Không, em nghĩ là phải lấy cái gì đó nó nó sao ta, nó có hình ảnh rồi nó basic một xíu đi mấy cái tự động này nó dễ lỗi mấy cái đó cũng hơi khó format đó."
+  },
+  {
+    "text" : "Thì sao cái đó anh đang bắt bớt hay sao?",
+    "startMs" : 186000,
+    "speaker" : "Speaker 2"
+  },
+  {
+    "startMs" : 188000,
+    "speaker" : "Speaker 1",
+    "text" : "Không, chị Hằng không thấy."
+  },
+  {
+    "text" : "Vậy hả?",
+    "startMs" : 190000,
+    "speaker" : "Speaker 2"
+  },
+  {
+    "startMs" : 193000,
+    "text" : "Khó ta.",
+    "speaker" : "Speaker 2"
+  },
+  {
+    "speaker" : "Speaker 1",
+    "text" : "Còn ở trên Android á là Android sẽ lấy vậy nè chị Hằng. Hằng ơi. Trên Android Android sẽ lấy vậy nè. Android sẽ lấy nguyên một cái tấm hình luôn.",
+    "startMs" : 203000
+  },
+  {
+    "speaker" : "Speaker 1",
+    "startMs" : 203000,
+    "text" : "Lỗi luôn nè, lỗi chung nè. Nè, lỗi chung nè. Y hệt như bên dàn lỗi đây đúng không? Có nghĩa là bên em trả ra nó bị lỗi á. Bên em lấy cái body vậy hiển thị nó bị lỗi còn bên đây là người ta lấy vậy thôi. Chính xác."
+  },
+  {
+    "text" : "Bên em lấy cái body vậy hiển thị nó bị lỗi.",
+    "speaker" : "Speaker 2",
+    "startMs" : 216000
+  },
+  {
+    "speaker" : "Speaker 1",
+    "startMs" : 221000,
+    "text" : "Đúng rồi, cái body của em nó có vấn đề rồi đó."
+  },
+  {
+    "startMs" : 221000,
+    "text" : "Sao em nghe biêt biêt ra để em kiểm tra.",
+    "speaker" : "Speaker 2"
+  },
+  {
+    "speaker" : "Speaker 1",
+    "startMs" : 223000,
+    "text" : "Ừm, body nó không vấn đề."
+  },
+  {
+    "speaker" : "Speaker 2",
+    "startMs" : 224000,
+    "text" : "Nó chỉ tải về xong rồi"
+  },
+  {
+    "startMs" : 225000,
+    "text" : "Cái",
+    "speaker" : "Speaker 1"
+  },
+  {
+    "text" : "nó",
+    "speaker" : "Speaker 2",
+    "startMs" : 225000
+  },
+  {
+    "speaker" : "Speaker 1",
+    "text" : "cái",
+    "startMs" : 225000
+  },
+  {
+    "speaker" : "Speaker 2",
+    "startMs" : 225000,
+    "text" : "boot"
+  },
+  {
+    "text" : "bản",
+    "startMs" : 225000,
+    "speaker" : "Speaker 1"
+  },
+  {
+    "startMs" : 225000,
+    "speaker" : "Speaker 2",
+    "text" : "lên"
+  },
+  {
+    "startMs" : 225000,
+    "speaker" : "Speaker 1",
+    "text" : "VIAW"
+  },
+  {
+    "speaker" : "Speaker 2",
+    "startMs" : 225000,
+    "text" : "thôi."
+  },
+  {
+    "text" : "trước nó ok mà sao bản view này nó lỗi này.",
+    "startMs" : 225000,
+    "speaker" : "Speaker 1"
+  },
+  {
+    "text" : "Nè, cái này là một cái",
+    "speaker" : "Speaker 1",
+    "startMs" : 229000
+  },
+  {
+    "speaker" : "Speaker 2",
+    "text" : "Cái markdown nào, API nào?",
+    "startMs" : 230000
+  },
+  {
+    "startMs" : 232000,
+    "text" : "Nè, thấy không? Ừm. Cái này thì nó bình thường nè thấy không? Nhưng mà mấy cái kia thì nó lỗi. • Plav",
+    "speaker" : "Speaker 1"
+  },
+  {
+    "speaker" : "Speaker 2",
+    "startMs" : 237000,
+    "text" : "Để em coi thử."
+  }
+]
