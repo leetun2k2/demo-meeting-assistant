@@ -24,6 +24,8 @@ export function isStoredMeetingResult(value: unknown): value is MeetingResult {
   if (value.reviewStatus !== undefined && value.reviewStatus !== "open" && value.reviewStatus !== "complete") return false;
   if (value.summaryError !== undefined && !isText(value.summaryError)) return false;
   if (value.warnings !== undefined && !isList(value.warnings, isText)) return false;
+  if (value.meetingNotes !== undefined && !isText(value.meetingNotes)) return false;
+  if (value.summaryNotes !== undefined && !isText(value.summaryNotes)) return false;
   if (value.summary === null) return value.status !== "completed";
   const summary = value.summary;
   if (!isRecord(summary) || !isText(summary.title) || !isText(summary.executiveSummary)) return false;

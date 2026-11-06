@@ -77,6 +77,15 @@ export interface MeetingResult {
   summary: MeetingSummary | null;
   summaryError?: string;
   warnings?: string[];
+  // User-editable notes for this meeting (context, terminology, explicit speaker corrections),
+  // editable both before Process Meeting and on the Results page (PRD v4 FR-05). Missing is
+  // equivalent to "". Not treated as system instructions when sent to Gemini.
+  meetingNotes?: string;
+  // Snapshot of meetingNotes that produced the current `summary`, i.e. the last successful
+  // summary request. Lets the UI tell the user when meetingNotes has since changed and a
+  // regenerate is needed to apply it (PRD v4 FR-07). Missing means the current summary (if any)
+  // was generated with empty notes.
+  summaryNotes?: string;
 }
 
 export interface MeetingErrorResponse {
@@ -90,4 +99,12 @@ export interface SummaryRetryResult {
   status: Extract<MeetingStatus, "completed" | "summary_failed">;
   summary: MeetingSummary | null;
   summaryError?: string;
+}
+
+// Reported by OutputPage's Generate/Retry/Regenerate action up to the Results page (PRD v4
+// FR-07). Carries the notes snapshot the request was sent with alongside the outcome, since the
+// page (not OutputPage) owns how a failed regenerate against an already-completed summary is
+// applied: the prior summary/summaryNotes must survive, only meetingNotes always advances.
+export interface SummaryRegenerateResult extends SummaryRetryResult {
+  meetingNotes: string;
 }

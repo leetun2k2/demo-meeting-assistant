@@ -20,3 +20,14 @@ Yêu cầu đủ rõ để thiết kế và chia task trong phạm vi demo. Khô
 - Cần key/quota hợp lệ để chạy AI thật. Không cần đọc hoặc lưu key trong planning.
 - Việc phát hiện speaker bị trộn dựa trên mâu thuẫn trong nội dung, không cam kết phát hiện mọi lỗi diarization.
 - Chưa có số đo độ chính xác; không hứa rằng prompt/validator xác minh được mọi tên đúng về ngữ nghĩa.
+
+## Bổ sung notes — khảo sát HEAD 28a54c1a617d4e16227ca9298fe42f76172a3b96
+
+Yêu cầu user ngày 2026-11-06: notes trước xử lý và sau khi xem kết quả, kết hợp extracted data để brief và sửa tên, tạo lại summary khi chưa đúng. Đủ rõ để planning, không có câu hỏi sản phẩm chặn công việc.
+
+- Baseline hiện tại đã có helper `speakerNames.ts`, `cacheCompat.ts`, inline assignee và luồng retry. Các phát hiện ở trên là khảo sát revision cũ, không phải danh sách code chắc chắn còn thiếu. `Verification-Results.md` là evidence lịch sử NOT_READY, vẫn còn prerequisite/defect cần đối chiếu khi triển khai, không được ghi thành đã đạt.
+- `MeetingResult` chưa có notes; workspace gửi chỉ transcript/key; summary route chưa nhận notes; Results handler hiện thay summary kể cả khi retry lỗi. Không thể chỉ thêm textarea: cần truyền, persist, validation, prompt và semantics giữ kết quả cũ.
+- Yêu cầu mới thay giới hạn transcript-only và loại trừ nhập tên trước của PRD cũ. Notes có thể cung cấp danh tính nhưng chỉ danh sách tên không xác định được raw speaker. Đính chính rõ ưu tiên hơn suy luận; notes tự mâu thuẫn giữ null.
+- Đề xuất một notes được chỉnh ở hai vị trí, không tạo preNotes/postNotes riêng. “Chat” hiểu là transcript; Ask AI vẫn ngoài phạm vi. Notes-only context phải phân biệt với quyết định thực trong cuộc họp.
+- Regenerate thay toàn summary sẽ mất sửa task thủ công; đề xuất nêu rõ ngay cạnh nút thay vì thêm cơ chế merge không được yêu cầu. Kết quả cũ phải sống sót nếu regenerate lỗi.
+- Planning không chạy kiểm thử hoặc AI; điều kiện live acceptance và các ca chưa xác minh trước đây vẫn giữ nguyên.

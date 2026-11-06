@@ -1,8 +1,8 @@
-# PRD v4 — Ưu tiên tên người tham gia trong kết quả demo
+# PRD v4 — Notes bổ sung, brief và tên người tham gia
 
 Ngày: 2026-11-06  
-Trạng thái: Bản đặc tả đề xuất cho demo; chưa triển khai hoặc nghiệm thu theo v4.  
-Phạm vi: Cải thiện nhận diện và sử dụng tên từ nội dung hội thoại trên luồng xử lý hiện có.
+Trạng thái: Bổ sung yêu cầu notes ngày 2026-11-06; baseline tên đã có triển khai và kết quả review riêng, phần notes chưa triển khai/nghiệm thu.  
+Phạm vi: Kết hợp transcript extracted với notes người dùng để brief cuộc họp, xác định đúng tên và tạo lại summary khi cần.
 
 ## 1. Mục tiêu
 
@@ -27,17 +27,17 @@ Không dùng file mẫu làm bảng đáp án danh tính. Trước nghiệm thu,
 |---|---|
 | Môi trường | Demo local trên desktop Chrome, một người dùng, một cuộc họp mỗi lượt |
 | Đầu vào | Transcript do luồng phiên âm hiện có tạo ra; ưu tiên hội thoại tiếng Việt có xen thuật ngữ tiếng Anh |
-| Nguồn xác định tên | Nội dung và ngữ cảnh hội thoại trong cùng cuộc họp |
+| Nguồn xác định tên | Nội dung/ngữ cảnh hội thoại và ghi chú hoặc đính chính danh tính rõ ràng do user cung cấp cho cuộc họp |
 | Kết quả chính | Tên có căn cứ thay cho “Person N”; người chưa rõ tên vẫn có nhãn ổn định |
 | Cách thực hiện | Tận dụng bước tạo summary và bảng ánh xạ hiện có; không yêu cầu thêm lượt gọi AI riêng |
-| Retry | Retry Summary phân tích lại tên từ transcript đang có, không phiên âm lại |
+| Retry / regenerate | Dùng transcript đang có + notes mới nhất để tạo lại cả summary và bảng tên, kể cả khi summary trước đã thành công; không phiên âm lại |
 | Dữ liệu cũ | Kết quả đã lưu vẫn mở được; không bắt buộc tự phân tích lại khi tải trang |
 | Ưu tiên | Toàn bộ yêu cầu và AC dưới đây là P0; không có hạng mục mở rộng chặn demo |
 
 ### Ngoài phạm vi
 
 - Nhận diện bằng giọng nói/sinh trắc học, hồ sơ người dùng, danh bạ hoặc danh sách nhân sự bên ngoài.
-- Nhập trước danh sách người tham gia, màn hình sửa/gán tên thủ công hoặc quản lý danh tính qua nhiều cuộc họp.
+- Màn hình quản lý/gán danh tính riêng hoặc quản lý danh tính qua nhiều cuộc họp. Notes được phép chứa tên, vai trò và đính chính speaker rõ ràng; danh sách tên đơn thuần không đủ để gán speaker.
 - Sửa diarization, tách/gộp speaker hoặc suy đoán ai đang nói bằng audio trong bước summary.
 - Hiển thị điểm tin cậy, bảng giải thích danh tính hoặc evidence viewer mới. Bằng chứng được ghi trong kết quả kiểm tra nghiệm thu.
 - Đảm bảo nhận ra tên tất cả người tham gia, đạt một tỷ lệ chính xác trên mọi cuộc họp, hoặc tự khôi phục tên khi summary thất bại.
@@ -45,12 +45,12 @@ Không dùng file mẫu làm bảng đáp án danh tính. Trước nghiệm thu,
 
 ## 4. Luồng demo chính
 
-1. Người demo chọn audio và chạy Process Meeting theo luồng hiện có.
+1. Người demo chọn audio, có thể ghi notes trước (bối cảnh, thuật ngữ, tên/vai trò đã biết), rồi chạy Process Meeting theo luồng hiện có.
 2. Ứng dụng phiên âm với speaker label và timestamp như hiện tại.
-3. Khi tạo summary, hệ thống xét toàn bộ transcript trong giới hạn được hỗ trợ để tìm tên tương ứng từng speaker. Bằng chứng ở cuối cuộc họp có thể giúp xác định người nói ở đầu cuộc họp.
+3. Khi tạo summary, hệ thống xét toàn bộ transcript trong giới hạn được hỗ trợ cùng notes để brief và tìm tên tương ứng từng speaker. Bằng chứng ở cuối cuộc họp có thể giúp xác định người nói ở đầu cuộc họp.
 4. Results ưu tiên tên đã xác định; speaker chưa rõ tên hiển thị “Person N”. Nội dung và timestamp của transcript gốc được giữ nguyên.
 5. Người demo kiểm tra cùng một người trong transcript, bộ lọc, summary và action items; copy hoặc tải kết quả để xác nhận tính nhất quán.
-6. Nếu summary lỗi, transcript vẫn xem được với nhãn trung lập. Retry Summary thành công cập nhật tên và summary từ cùng transcript, không upload hoặc phiên âm lại.
+6. Results có ô notes chứa lại nội dung ban đầu. User sửa/bổ sung khi summary hoặc tên chưa đúng rồi bấm Regenerate Summary. Nếu chưa có summary dùng Generate/Retry Summary. Mọi lượt dùng cùng transcript và notes hiện tại, không upload hoặc phiên âm lại.
 
 ## 5. Quy tắc xác định danh tính
 
@@ -67,7 +67,7 @@ Không dùng file mẫu làm bảng đáp án danh tính. Trước nghiệm thu,
 | Không có tên | Giữ nhãn trung lập; không tạo tên mẫu |
 
 - Xét ngữ cảnh liên quan trong toàn transcript, không giới hạn ở câu giới thiệu hoặc đoạn đầu.
-- Giữ tên theo cách xuất hiện trong hội thoại, gồm dấu tiếng Việt khi có. Không tự bổ sung họ tên, chức vụ hoặc thông tin cá nhân.
+- Giữ tên theo cách xuất hiện trong hội thoại hoặc đính chính rõ ràng của user, gồm dấu tiếng Việt khi có. Không tự bổ sung họ tên, chức vụ hoặc thông tin cá nhân.
 - Đại từ “anh”, “em”, “mình” hoặc vai trò đơn thuần không được coi là tên riêng.
 - Không gộp hai nhãn chỉ vì cùng nhắc đến một tên. Nếu tên trùng nhau thực sự được xác nhận, UI phải phân biệt được bằng tên kèm số speaker; nếu không đủ căn cứ thì để chưa xác định.
 
@@ -91,7 +91,7 @@ Không dùng file mẫu làm bảng đáp án danh tính. Trước nghiệm thu,
 ### FR-04 — Lỗi và thử lại
 
 - Không đủ căn cứ xác định tên là kết quả hợp lệ, không phải lỗi summary. Các phần summary khác vẫn được hiển thị.
-- Summary thất bại: giữ transcript và lỗi thật, không chèn tên hoặc nội dung mẫu để làm đầy kết quả.
+- Tạo summary đầu tiên thất bại: giữ transcript và lỗi thật, không chèn tên hoặc nội dung mẫu. Regenerate thất bại khi đã có summary: giữ nguyên summary/bảng tên thành công trước đó và notes đang sửa; hiển thị lỗi lần tạo lại, cho retry.
 - Retry thành công: cập nhật cùng lúc summary và ánh xạ tên trên các bề mặt liên quan; giữ nguyên transcript và timestamp.
 - Cache, reload và export bảo toàn bảng tên đã tạo thành công theo cơ chế lưu kết quả hiện có. Khi cache không khả dụng, dữ liệu vẫn dùng được trong phiên theo baseline v3.
 - Không yêu cầu tên ổn định tuyệt đối giữa các lần chạy AI độc lập. Mỗi kết quả phải đáp ứng quy tắc có căn cứ và nhất quán trong chính kết quả đó.
@@ -131,4 +131,42 @@ Nếu không xác định chắc được tên nào trong mẫu, kết quả dù
 - Ghi lại tên kỳ vọng, tên thực tế và vị trí bằng chứng cho từng speaker trong các ca kiểm tra; không dùng output AI làm đáp án cho chính nó.
 - Kiểm tra nhất quán UI/copy/export, reload và retry; chạy các checks hiện có phù hợp nếu có thay đổi code. Không yêu cầu thêm unit test.
 - Provider lỗi hoặc thiếu audio/đáp án kiểm chứng phải ghi là chưa xác nhận ở ca tương ứng; fixture chỉ chứng minh hiển thị và nhánh lỗi, không thay thế kiểm tra chất lượng nhận diện.
-- Không yêu cầu thay kiến trúc, thêm màn hình hoặc hoàn thiện tính năng production để coi demo v4 hoàn thành.
+- Không yêu cầu thay kiến trúc, thêm màn hình riêng hoặc hoàn thiện tính năng production để coi demo v4 hoàn thành. Hai ô notes nằm trên các màn hình hiện có.
+
+## 9. Bổ sung notes trước/sau và tạo lại kết quả
+
+Phần này bổ sung FR-01–04; quy tắc nguồn danh tính và regenerate bên dưới thay thế giới hạn chỉ dùng transcript của bản trước. “Đoạn chat” trong yêu cầu này được hiểu là hội thoại/transcript hiển thị và các nội dung summary liên quan; không mở rộng tính năng Ask AI.
+
+### FR-05 — Một nội dung notes, hai điểm chỉnh sửa
+
+- Có textarea tùy chọn tại màn hình record/upload trước Process Meeting, và tại đầu Results, trước phần summary. Hai vị trí chỉnh cùng notes của cuộc họp, không phải hai nguồn độc lập. Không cần notes để xử lý audio.
+- Placeholder gợi ý bối cảnh, thuật ngữ và đính chính: “Speaker 1 là Khánh; Speaker 2 là Long; Nexus là tên dự án”. Chỉ gán speaker khi user nêu liên kết rõ; “Người tham gia: Khánh, Long” không đủ xác định ai nói.
+- Notes được chuyển cùng kết quả khi điều hướng, lưu bằng cơ chế cache best effort hiện có và có trong JSON export. Kết quả schema 3 cũ thiếu notes mở với chuỗi rỗng. Không dùng lại notes cuộc họp trước khi bắt đầu cuộc họp mới.
+- Giới hạn đề xuất cho demo: 10.000 ký tự notes; vượt giới hạn hoặc sai kiểu phải báo rõ và không gọi AI, không cắt âm thầm. Ghi notes không tự kích hoạt inference.
+
+### FR-06 — Kết hợp dữ liệu có phân biệt nguồn
+
+- Tạo brief và các trường summary hiện có từ toàn transcript + notes, trong cùng một lượt summary AI. Không thêm định dạng brief hay pipeline extraction riêng.
+- User có thể đính chính rõ tên/thuật ngữ và bổ sung bối cảnh bị thiếu. Đính chính danh tính rõ ràng được ưu tiên hơn suy luận từ transcript; notes mơ hồ hoặc tự mâu thuẫn không đủ để gán tên. Speaker không tồn tại không được tạo mới.
+- Nội dung chỉ có trong notes được nêu là bối cảnh/đính chính do user bổ sung trong phần summary phù hợp; không trình bày như lời nói hoặc quyết định đã được mọi người đồng ý. Không tạo timestamp/key moment giả cho thông tin chỉ có trong notes.
+- Notes là dữ liệu, không phải chỉ dẫn hệ thống. Nội dung yêu cầu bỏ qua quy tắc, tiết lộ key hoặc tự tạo quyết định không được thực thi. Không đổi lời thoại raw/timestamp khi sửa tên hiển thị.
+
+### FR-07 — Regenerate chủ động, an toàn
+
+- Cho tạo lại từ cả completed, transcribed và summary_failed có transcript; không tạo summary cho no_speech chỉ từ notes.
+- Lưu notes ngay khi sửa theo cơ chế hiện có; ghi rõ khi notes khác bản đã dùng tạo summary. User bấm nút mới gửi transcript + snapshot notes hiện tại. Khóa nút gửi lặp và ô notes trong lúc chờ để kết quả không gắn nhầm bản notes.
+- Thành công thay toàn summary/bảng tên cùng lúc và bỏ cảnh báo chưa áp dụng. Lần tạo lại thay action items, bao gồm sửa owner/trạng thái thủ công; UI phải nói rõ điều này trước thao tác. Các metadata cuộc họp và transcript giữ nguyên.
+- Thất bại giữ notes và kết quả thành công trước đó, vẫn báo notes chưa áp dụng; không biến completed thành summary_failed làm mất summary. Nếu chưa có summary, dùng nhánh summary_failed hiện có. Retry tiếp tục với notes mới nhất.
+
+### Acceptance bổ sung (P0)
+
+| ID | Ca kiểm tra | Kết quả đạt |
+|---|---|---|
+| AC-11 | Nhập notes trước Process; mở Results rồi reload | Notes giống input, được dùng ở lượt summary đầu, reload giữ khi cache ghi thành công; bỏ trống vẫn chạy như cũ |
+| AC-12 | Transcript mơ hồ; notes ghi rõ Speaker 1 là Khánh | Tên hiển thị và summary dùng Khánh nhất quán; danh sách tên không có liên kết không được gán tùy ý; raw transcript giữ nguyên |
+| AC-13 | Summary completed sai; sửa notes rồi Regenerate | Hiện trạng chưa áp dụng trước khi bấm; đúng một summary request với notes mới; không upload/phiên âm; summary và bảng tên thay cùng lúc |
+| AC-14 | Regenerate lỗi rồi retry thành công | Summary/bảng tên cũ và notes mới còn nguyên khi lỗi; retry dùng notes mới; thành công cập nhật kết quả và trạng thái áp dụng |
+| AC-15 | Notes thêm bối cảnh, chứa chỉ dẫn độc hại hoặc mâu thuẫn | Phân biệt nguồn user; không bịa đồng thuận/timestamp; không thực thi chỉ dẫn; mapping mâu thuẫn để null |
+| AC-16 | Notes quá dài/sai kiểu, cache cũ, JSON export, cuộc họp mới | Báo validation rõ trước AI; cache cũ thiếu notes dùng rỗng; JSON giữ notes và bản đã áp dụng; cuộc họp mới không kế thừa notes cũ |
+
+DoD bổ sung: hoàn thành AC-11–16 với kết quả thực thi riêng; kết quả verification lịch sử không chứng minh phần notes. Giới hạn 10.000 ký tự, khóa chỉnh sửa trong lúc chờ và thay toàn bộ tasks là lựa chọn thiết kế đề xuất cho demo, không phải quyết định đã được user phê duyệt riêng.

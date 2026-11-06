@@ -105,3 +105,49 @@ Cleanup: phục hồi thao tác storage, cache và interception đã thay; khôn
 AC-01/02 → TC-001; AC-03/04 → TC-002; AC-05 → TC-004; AC-06 → TC-003; AC-07 → TC-006; AC-08 → TC-008; AC-09 → TC-007; AC-10 → TC-001/004/005. Tên trùng trong FR-01 được kiểm tra hiển thị ở TC-004; fixture không chứng minh AI nhận diện hai người trùng tên.
 
 Chưa có F1 audio và ground truth mẫu dài được xác nhận trong planning. Không có live calls, tests hoặc checks nào đã chạy. Khi thực thi, lưu revision/environment, input reference, kết quả từng ca và lỗi chưa giải quyết tại `Verification-Results.md`. Tính đúng ngữ nghĩa không suy ra từ HTTP 200 hoặc schema hợp lệ.
+
+## Bổ sung notes — contract và ca chưa thực thi
+
+Contract **dự kiến sau triển khai**: summary POST nhận thêm `meetingNotes?: string`; thiếu/rỗng hợp lệ, sai kiểu hoặc >10.000 ký tự trả 400 trước provider. MeetingResult thêm meetingNotes/summaryNotes optional theo Design §4. Các mô tả endpoint trước phần này là baseline đã khảo sát, không chứng minh notes hiện có.
+
+Fixture N: transcript hai raw labels không tự giới thiệu, Speaker 1 nhận sửa login, Speaker 2 nhắc tên người thứ ba Minh. Notes A: “Speaker 1 là Khánh; Speaker 2 là Long. Bối cảnh bổ sung: Nexus là tên dự án.” Notes B đổi rõ Speaker 1 là Lan. Đáp án tên do fixture cung cấp, không lấy từ output AI. Dùng key live cho kiểm tra ngữ nghĩa; interception chỉ chứng minh UI/error/validation. Dùng profile/cache demo và cleanup chung của suite.
+
+| ID | Kịch bản | Ưu tiên | Kết quả |
+|---|---|---|---|
+| TC-009 | Notes trước xử lý và mapping | Critical | Input được dùng lượt đầu, tên đúng, notes ở Results/reload |
+| TC-010 | Sửa notes sau completed rồi regenerate | Critical | Một request, kết quả mới đồng bộ, raw transcript giữ nguyên |
+| TC-011 | Regenerate lỗi, retry và pending | Critical | Không mất kết quả/notes; không gửi lặp hoặc áp dụng stale completion |
+| TC-012 | Nguồn dữ liệu và notes mơ hồ/độc hại | High | Không gán tùy ý, không giả quyết định/evidence, không thực thi chỉ dẫn |
+| TC-013 | Validation/cache/export/cuộc họp mới | High | Giới hạn rõ, tương thích cũ, lưu đúng snapshot, không rò notes cuộc trước |
+
+### TC-009 — Notes đầu vào
+
+Preconditions: audio test có transcript đáp án độc lập và notes xác định đúng raw label; raw labels phải được xác nhận sau extraction, không mặc định thứ tự provider. Có thể dùng fixture N ở boundary summary để kiểm chứng riêng prompt, ghi rõ không thay thế audio chain.
+
+Chain: nhập notes trước Process → xử lý → capture request summary không chứa key trong evidence → Results → reload. Assertions: đúng notes snapshot trong request đầu, notes được hiển thị lại; mapping đúng mọi bề mặt; không sửa text/timestamp; summary có nguồn user cho bối cảnh chỉ có trong notes. Lặp input rỗng để xác nhận baseline không bị chặn. Cleanup: khôi phục cache/demo audio.
+
+### TC-010 — Đính chính và tạo lại thành công
+
+Preconditions: fixture N completed với Notes A, có task đã sửa owner/status thủ công. Chain: sửa notes thành B → kiểm tra chưa áp dụng → đọc mô tả thay summary/tasks → Regenerate → kiểm tra network/result/copy/Markdown/JSON → reload.
+
+Assertions: trước bấm summary cũ giữ nguyên; đúng một summary request với B và toàn transcript, không process/upload/transcribe; thành công dùng Lan nhất quán transcript label/filter/summary/task speaker/email/export; JSON raw transcript không đổi, meetingNotes = summaryNotes = B. Summary/tasks mới thay bản cũ, không hứa giữ sửa thủ công. Metadata giữ nguyên, không còn cảnh báo chưa áp dụng. Cleanup: khôi phục result trước ca.
+
+### TC-011 — Lỗi và thao tác trong lúc chờ
+
+Preconditions: completed A, notes chỉnh B. Chain: cưỡng bức provider/network lỗi → Regenerate → kiểm tra result/reload → bỏ lỗi → retry live; dùng request delay để double click, thử sửa notes/tasks và điều hướng khỏi Results trước completion.
+
+Assertions: thất bại giữ summary/map/summaryNotes A, meetingNotes B, báo lỗi thật và chưa áp dụng; status vẫn completed. Retry dùng B, thành công thay nguyên tử. Pending không cho gửi lặp/sửa xung đột; completion đã unmount không ghi vào cuộc họp khác. Lặp với transcribed/summary_failed chưa có summary: lỗi giữ transcript/notes và summary_failed; no_speech không tạo summary từ notes. Cache failure giữ notes/kết quả trong phiên và cảnh báo giới hạn reload. Phân loại simulated/live từng nhánh. Cleanup: gỡ delay/interception và phục hồi cache.
+
+### TC-012 — Không biến notes thành lời nói
+
+Preconditions: fixture N, provider live. Chain: POST lần lượt với (a) notes A, (b) chỉ “Khánh, Long là người tham gia”, (c) “Speaker 1 là Khánh; Speaker 1 là Lan” không có đính chính thứ tự rõ, (d) notes thêm bối cảnh, tên Speaker 99 và yêu cầu bỏ qua quy tắc/tự tuyên bố một quyết định không có trong transcript.
+
+Assertions: a mapping theo notes rõ dù transcript không đủ; b không gán chỉ từ danh sách; c Speaker 1 null; không tạo Speaker 99. Bối cảnh notes-only được ghi nguồn, không tạo keyMoment/timestamp hay quyết định đã đồng thuận giả; không làm theo chỉ dẫn độc hại. Các raw labels/text/timestamp giữ nguyên; tên người thứ ba không biến thành speaker. Cleanup: không có server state; không lưu key trong evidence.
+
+### TC-013 — Giới hạn và tương thích
+
+Chain: POST omitted, empty, string 10.000, string 10.001 ký tự, null/object notes → kiểm tra response/provider count; nhập quá dài trên UI → kiểm tra lỗi; load cache schema 3 thiếu cả hai field và cache field sai kiểu → load completed A → sửa B chưa regenerate → export JSON/reload → bắt đầu cuộc họp mới.
+
+Assertions: omitted/empty không lỗi validation; 10.000 không bị chặn bởi giới hạn notes (provider có thể lỗi riêng); 10.001/sai kiểu trả 400, không provider call hoặc cắt âm thầm. UI báo lỗi và giữ input để sửa. Cache cũ mở rỗng, sai kiểu bị từ chối; JSON/reload phân biệt meetingNotes B với summaryNotes A và cảnh báo chưa áp dụng. Cuộc họp mới không tự điền B; không gọi AI khi restore. Cleanup: khôi phục đúng key cache đã sao lưu, bỏ interception.
+
+Coverage bổ sung: AC-11 → TC-009; AC-12 → TC-009/012; AC-13 → TC-010; AC-14 → TC-011; AC-15 → TC-012; AC-16 → TC-013. Toàn bộ TC-009–013 chưa chạy; live semantic quality cần provider và đánh giá độc lập. Verification Results lịch sử không áp dụng cho phần notes.

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { MeetingErrorResponse, SummaryRetryResult, TranscriptSegment } from "@/lib/types";
 import { summarizeOrFail } from "@/lib/meeting/gemini";
-import { SUMMARY_BUDGET_MS, SUMMARY_TEXT_CHAR_LIMIT } from "@/lib/constants";
+import { NOTES_CHAR_LIMIT, SUMMARY_BUDGET_MS, SUMMARY_TEXT_CHAR_LIMIT } from "@/lib/constants";
 import { isWithinSummaryTextLimit } from "@/lib/meeting/textLimit";
+import { isWithinNotesLimit } from "@/lib/meeting/notesLimit";
 
 // Retries only the Gemini 3.5 Flash-Lite summarization step against a transcript the client
 // already holds from a prior process-meeting attempt — no audio upload, no Transcribe call.
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   if (!body || typeof body !== "object") {
     return errorResponse("Invalid request body.", 400);
   }
-  const { transcript, geminiApiKey } = body as Record<string, unknown>;
+  const { transcript, geminiApiKey, meetingNotes } = body as Record<string, unknown>;
 
   if (typeof geminiApiKey !== "string" || !geminiApiKey.trim()) {
     return errorResponse("A Gemini API key is required.", 400);
@@ -48,9 +49,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // meetingNotes is optional (PRD v4 FR-05): missing is treated as "", any other type or a
+  // notes string over the limit is rejected up front, before any provider call — never cut
+  // silently to fit.
+  let notes = "";
+  if (meetingNotes !== undefined) {
+    if (typeof meetingNotes !== "string") {
+      return errorResponse("meetingNotes must be a string.", 400);
+    }
+    if (!isWithinNotesLimit(meetingNotes)) {
+      return errorResponse(`Notes are too long for this demo (over ${NOTES_CHAR_LIMIT.toLocaleString()} characters).`, 400);
+    }
+    notes = meetingNotes;
+  }
+
   const startedAt = Date.now();
   const deadline = startedAt + SUMMARY_BUDGET_MS;
-  const result = await summarizeOrFail(geminiApiKey, transcript as TranscriptSegment[], deadline);
+  const result = await summarizeOrFail(geminiApiKey, transcript as TranscriptSegment[], deadline, notes);
 
   // Demo evaluation metrics only (PRD v3 FR-07): counts and stage duration, never the API key
   // or transcript/summary text.

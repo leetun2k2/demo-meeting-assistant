@@ -1,19 +1,28 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type {
   ActionItem,
   MeetingErrorResponse,
   MeetingResult,
+  SummaryRegenerateResult,
   SummaryRetryResult,
 } from "@/lib/types";
 import { displaySpeaker, normalizeSpeakerMentions } from "@/lib/meeting/display";
 import { downloadTextFile, slugForFilename, toMarkdown, toSummaryText } from "@/lib/meeting/export";
 import { formatClock } from "@/lib/format";
-import { GEMINI_API_KEY_STORAGE_KEY, SUMMARY_BUDGET_MS, SUMMARY_TEXT_CHAR_LIMIT } from "@/lib/constants";
+import {
+  GEMINI_API_KEY_STORAGE_KEY,
+  NOTES_CHAR_LIMIT,
+  NOTES_HELPER_TEXT,
+  NOTES_PLACEHOLDER,
+  SUMMARY_BUDGET_MS,
+  SUMMARY_TEXT_CHAR_LIMIT,
+} from "@/lib/constants";
 import { readStoredValue } from "@/lib/storage";
 import { isWithinSummaryTextLimit } from "@/lib/meeting/textLimit";
+import { isWithinNotesLimit } from "@/lib/meeting/notesLimit";
 
 // Keeps a single page of segments rendered at a time for a long transcript, per PRD v3 FR-06.
 // Search/filter still run over the full transcript before this slice is taken.
@@ -214,8 +223,29 @@ interface OutputPageProps {
   audioUrl: string | null;
   audioAvailable: boolean;
   onActionItemsChange: (next: ActionItem[]) => void;
-  onSummaryUpdate: (next: SummaryRetryResult) => void;
-  onMeetingChange: (changes: Pick<MeetingResult, "meetingOwner" | "reviewStatus" | "audioDurationMs">) => void;
+  onSummaryUpdate: (next: SummaryRegenerateResult) => void;
+  onMeetingChange: (changes: Partial<MeetingResult>) => void;
+}
+
+function renderHighlightedText(text: string, query: string) {
+  const trimmed = query.trim();
+  if (!trimmed) return text;
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(${escaped})`, "gi");
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === trimmed.toLowerCase() ? (
+          <mark key={i} className="bg-amber-200 text-amber-950 px-0.5 rounded font-semibold">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
 }
 
 export default function OutputPage({
@@ -229,8 +259,30 @@ export default function OutputPage({
   const { transcript, summary } = result;
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Tracks the latest `result` prop and mount state so an in-flight Generate/Regenerate request
+  // (PRD v4 FR-07) can tell, once it resolves, whether it should still be applied: ignored if
+  // this component has unmounted, a newer request has since started, or the meeting currently
+  // shown is no longer the one the request was sent for (the user navigated away and a different
+  // result replaced this one). processedAt is stable across a regenerate, so it identifies "the
+  // same meeting" without needing a dedicated id field.
+  const resultRef = useRef(result);
+  useEffect(() => {
+    resultRef.current = result;
+  }, [result]);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // Tabs & Filters
-  const [activeTab, setActiveTab] = useState<"summary" | "transcript" | "insights" | "json">("summary");
+  const [activeTab, setActiveTab] = useState<"summary" | "transcript" | "insights" | "full" | "json">("summary");
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [actionFilter, setActionFilter] = useState<"all" | "pending" | "done">("all");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
   const [transcriptQuery, setTranscriptQuery] = useState("");
   const [speakerFilter, setSpeakerFilter] = useState("all");
   const [importantOnly, setImportantOnly] = useState(false);
@@ -253,8 +305,10 @@ export default function OutputPage({
   const [newDeadline, setNewDeadline] = useState("");
   const [newPriority, setNewPriority] = useState<"High" | "Medium" | "Low">("Medium");
 
-  // Retry state
+  // Generate/Retry/Regenerate state (PRD v4 FR-07)
   const [retryingSummary, setRetryingSummary] = useState(false);
+  const [generateSummaryError, setGenerateSummaryError] = useState<string | null>(null);
+  const generateTokenRef = useRef(0);
 
   // Inline assignee editor state (PRD v4 FR-03/AC-06): tracks which action item row currently
   // has its free-text name field open, so selecting "Custom name…" doesn't require a modal.
@@ -291,6 +345,17 @@ export default function OutputPage({
     }));
   }, [transcript, hasTiming, summary]);
 
+  const filteredActionItems = useMemo(() => {
+    const items = (summary?.actionItems ?? []).map((item, idx) => ({ item, idx }));
+    if (actionFilter === "pending") {
+      return items.filter(({ item }) => item.status !== "done" && item.status !== "Done");
+    }
+    if (actionFilter === "done") {
+      return items.filter(({ item }) => item.status === "done" || item.status === "Done");
+    }
+    return items;
+  }, [summary?.actionItems, actionFilter]);
+
   // Filtered transcript — search/filter run over the full array (not a page of it), per
   // PRD v3 FR-06; pagination below only slices this already-filtered result for render.
   const filteredTranscript = useMemo(() => {
@@ -308,7 +373,7 @@ export default function OutputPage({
   // Reset to page 1 whenever the query/filter changes so the page shown always matches what's
   // actually being filtered (PRD v3 Technical Design). Adjusted during render rather than in
   // an effect, per React's guidance for state that depends on a changed value.
-  const transcriptFilterKey = `${transcriptQuery} ${speakerFilter} ${importantOnly}`;
+  const transcriptFilterKey = `${transcriptQuery}\u0000${speakerFilter}\u0000${importantOnly}`;
   const [lastTranscriptFilterKey, setLastTranscriptFilterKey] = useState(transcriptFilterKey);
   if (transcriptFilterKey !== lastTranscriptFilterKey) {
     setLastTranscriptFilterKey(transcriptFilterKey);
@@ -337,6 +402,10 @@ export default function OutputPage({
   function jumpToSegment(idx: number) {
     const seg = transcript[idx];
     if (!seg) return;
+
+    if (activeTab !== "transcript" && activeTab !== "full") {
+      setActiveTab("transcript");
+    }
 
     const q = transcriptQuery.trim().toLowerCase();
     const hiddenByFilter =
@@ -433,9 +502,20 @@ export default function OutputPage({
     setCustomAssigneeIdx(null);
   }
 
-  async function handleRetrySummary() {
+  // Shared by Generate Summary (status "transcribed"), Retry Summary (status "summary_failed")
+  // and Regenerate (status "completed") — PRD v4 FR-07: same request path, with notes/transcript
+  // snapshotted at submit time so an edit made after clicking never changes what this request
+  // sends. The caller (Results page, via onSummaryUpdate) decides how to apply a failure against
+  // an already-completed summary; this function only ever reports what happened.
+  async function handleGenerateSummary() {
+    if (retryingSummary) return;
     if (!isWithinSummaryTextLimit(transcript)) {
       showToast(`This transcript is over the ${SUMMARY_TEXT_CHAR_LIMIT.toLocaleString()}-character limit supported for summarization in this demo.`);
+      return;
+    }
+    const notesSnapshot = result.meetingNotes ?? "";
+    if (!isWithinNotesLimit(notesSnapshot)) {
+      showToast(`Notes are over the ${NOTES_CHAR_LIMIT.toLocaleString()}-character limit supported in this demo. Shorten them and try again.`);
       return;
     }
     const apiKey = readStoredValue(GEMINI_API_KEY_STORAGE_KEY);
@@ -443,25 +523,45 @@ export default function OutputPage({
       showToast("Add your Gemini API key on the home page first.");
       return;
     }
+
+    const token = ++generateTokenRef.current;
+    const meetingIdentity = result.processedAt;
+    const stillCurrent = () =>
+      mountedRef.current && token === generateTokenRef.current && resultRef.current.processedAt === meetingIdentity;
+
+    setGenerateSummaryError(null);
     setRetryingSummary(true);
     try {
       const res = await fetch("/api/summarize-meeting", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript, geminiApiKey: apiKey }),
+        body: JSON.stringify({ transcript, geminiApiKey: apiKey, meetingNotes: notesSnapshot }),
         signal: AbortSignal.timeout(SUMMARY_BUDGET_MS),
       });
       const data = await res.json();
+      if (!stillCurrent()) return;
       if (!res.ok) {
-        showToast((data as MeetingErrorResponse)?.error || "Retry failed");
+        const message = (data as MeetingErrorResponse)?.error || "Summary request failed.";
+        setGenerateSummaryError(message);
+        showToast(message);
+        onSummaryUpdate({ status: "summary_failed", summary: null, summaryError: message, meetingNotes: notesSnapshot });
         return;
       }
-      onSummaryUpdate(data as SummaryRetryResult);
-      showToast(data.status === "completed" ? "Summary regenerated!" : data.summaryError || "Summary could not be generated. Please retry.");
+      const summaryResult = data as SummaryRetryResult;
+      onSummaryUpdate({ ...summaryResult, meetingNotes: notesSnapshot });
+      showToast(summaryResult.status === "completed" ? "Summary generated." : summaryResult.summaryError || "Summary could not be generated. Please retry.");
+      if (summaryResult.status !== "completed") setGenerateSummaryError(summaryResult.summaryError ?? "Summary could not be generated.");
     } catch (error) {
-      showToast(error instanceof DOMException && error.name === "TimeoutError" ? "Summarization did not finish within the time budget." : "Could not regenerate summary.");
+      if (!stillCurrent()) return;
+      const message =
+        error instanceof DOMException && error.name === "TimeoutError"
+          ? "Summarization did not finish within the time budget."
+          : "Could not reach the server to generate the summary.";
+      setGenerateSummaryError(message);
+      showToast(message);
+      onSummaryUpdate({ status: "summary_failed", summary: null, summaryError: message, meetingNotes: notesSnapshot });
     } finally {
-      setRetryingSummary(false);
+      if (stillCurrent()) setRetryingSummary(false);
     }
   }
 
@@ -506,6 +606,10 @@ export default function OutputPage({
   const filenameBase = summary ? slugForFilename(summary.title) : "meeting";
   const transcriptCharCount = useMemo(() => JSON.stringify(transcript).length, [transcript]);
   const overSummaryLimit = !isWithinSummaryTextLimit(transcript);
+
+  // True once the live notes differ from the snapshot that produced the current summary (PRD v4
+  // FR-07/AC-13) — only meaningful once there is a completed summary to compare against.
+  const notesChangedSinceSummary = result.status === "completed" && (result.meetingNotes ?? "") !== (result.summaryNotes ?? "");
 
   // Data helpers
   const meetingTitle = summary?.title || "Meeting Results";
@@ -558,10 +662,11 @@ export default function OutputPage({
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all shadow-2xs font-bold"
+            className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-bold text-zinc-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all shadow-2xs"
             title="Back to home workspace"
           >
-            ←
+            <span>←</span>
+            <span className="hidden sm:inline">Workspace</span>
           </Link>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20">
@@ -569,10 +674,51 @@ export default function OutputPage({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold tracking-tight text-zinc-900">
-                  {meetingTitle}
-                </h1>
-
+                {isEditingTitle ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (editedTitle.trim()) {
+                        onMeetingChange({ summary: result.summary ? { ...result.summary, title: editedTitle.trim() } : null });
+                      }
+                      setIsEditingTitle(false);
+                    }}
+                    className="flex items-center gap-1.5"
+                  >
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      autoFocus
+                      onBlur={() => {
+                        if (editedTitle.trim()) {
+                          onMeetingChange({ summary: result.summary ? { ...result.summary, title: editedTitle.trim() } : null });
+                        }
+                        setIsEditingTitle(false);
+                      }}
+                      className="rounded-lg border border-indigo-400 bg-white px-2 py-0.5 text-base font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-2 group">
+                    <h1 className="text-lg font-bold tracking-tight text-zinc-900">
+                      {meetingTitle}
+                    </h1>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditedTitle(meetingTitle);
+                        setIsEditingTitle(true);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-indigo-600 transition-opacity"
+                      title="Edit meeting title"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 mt-0.5">
                 <span className="flex items-center gap-1 font-medium text-zinc-600">
@@ -628,6 +774,77 @@ export default function OutputPage({
       {/* DASHBOARD GRID CONTENT */}
       <main className="p-6 sm:p-8 max-w-[1440px] w-full mx-auto">
         {result.warnings?.map((warning, i) => <p role="status" key={i} className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{warning}</p>)}
+
+        {/* MEETING NOTES & CONTEXT (Collapsible for cleaner above-the-fold layout) */}
+        <div className="mb-6 rounded-2xl border border-indigo-100 bg-white/90 p-4 sm:p-5 shadow-xs transition-all hover:border-indigo-200">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-zinc-900">Meeting Context & Notes</h2>
+                  {notesChangedSinceSummary && (
+                    <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                      Modified — Regenerate needed
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {notesExpanded ? NOTES_HELPER_TEXT : (result.meetingNotes ? (result.meetingNotes.slice(0, 80) + (result.meetingNotes.length > 80 ? "…" : "")) : "No extra context notes provided")}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-zinc-400 font-mono">
+                {(result.meetingNotes ?? "").length.toLocaleString()} / {NOTES_CHAR_LIMIT.toLocaleString()}
+              </span>
+              <button
+                type="button"
+                onClick={() => setNotesExpanded(!notesExpanded)}
+                className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors shadow-2xs"
+              >
+                <span>{notesExpanded ? "Collapse" : "Edit Notes"}</span>
+                <span className="text-[10px] text-zinc-400">{notesExpanded ? "▲" : "▼"}</span>
+              </button>
+            </div>
+          </div>
+
+          {notesExpanded && (
+            <div className="mt-4 pt-4 border-t border-indigo-50 animate-slide-up">
+              <textarea
+                value={result.meetingNotes ?? ""}
+                disabled={retryingSummary}
+                onChange={(e) => onMeetingChange({ meetingNotes: e.target.value })}
+                placeholder={NOTES_PLACEHOLDER}
+                maxLength={NOTES_CHAR_LIMIT}
+                rows={3}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-zinc-100/70 transition-all resize-y"
+              />
+              <div className="mt-2.5 flex items-center justify-between">
+                <p className="text-[11px] text-zinc-400">
+                  Notes are sent to Gemini when you click Regenerate to refine speaker names and context.
+                </p>
+                {result.status === "completed" && (
+                  <button
+                    type="button"
+                    onClick={handleGenerateSummary}
+                    disabled={retryingSummary || transcript.length === 0 || overSummaryLimit}
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <span>{retryingSummary ? "Regenerating…" : "Regenerate Summary"}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* LEFT / CENTER COLUMN (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
@@ -665,7 +882,7 @@ export default function OutputPage({
                   </span>
                   <button
                     type="button"
-                    onClick={handleRetrySummary}
+                    onClick={handleGenerateSummary}
                     disabled={retryingSummary || transcript.length === 0 || overSummaryLimit}
                     className="hover:underline text-[11px] text-zinc-500 hover:text-indigo-600 disabled:no-underline disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -674,10 +891,25 @@ export default function OutputPage({
                       : result.status === "transcribed"
                       ? "Generate Summary"
                       : result.status === "completed"
-                      ? "Refresh"
+                      ? "Regenerate"
                       : "Retry Summary"}
                   </button>
                 </div>
+                {result.status === "completed" && !retryingSummary && (
+                  <p className="mt-1.5 text-[10px] text-zinc-400 text-right">
+                    Regenerating replaces the summary and action items, including any manual edits.
+                  </p>
+                )}
+                {notesChangedSinceSummary && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-amber-700 text-right">
+                    Notes changed since this summary — Regenerate to apply them.
+                  </p>
+                )}
+                {generateSummaryError && result.status === "completed" && !retryingSummary && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-rose-700 text-right">
+                    Last attempt failed: {generateSummaryError}
+                  </p>
+                )}
               </div>
 
               {/* 4 Stat Metric Tiles (5 cols, 2x2 grid) */}
@@ -745,8 +977,9 @@ export default function OutputPage({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  disabled={!audioAvailable} onClick={toggleAudioPlayback}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95"
+                  disabled={!audioAvailable}
+                  onClick={toggleAudioPlayback}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isPlayingAudio ? (
                     <span className="font-bold text-xs">❚❚</span>
@@ -762,18 +995,43 @@ export default function OutputPage({
                 </div>
               </div>
 
-              <progress aria-label="Audio playback progress" value={currentTimeSec} max={durationMs > 0 ? durationMs / 1000 : 1} className="h-2 flex-1 accent-indigo-600" />
-              <div className="flex flex-wrap gap-2">
-                {(summary?.keyMoments ?? []).map((moment, i) => <button type="button" key={i} onClick={() => jumpToTime(moment.atMs)} className="text-xs text-indigo-600">{formatClock(moment.atMs)} · {moment.title}</button>)}
+              <input
+                type="range"
+                aria-label="Audio playback seek bar"
+                disabled={!audioAvailable}
+                min="0"
+                max={durationMs > 0 ? durationMs / 1000 : 1}
+                step="0.1"
+                value={currentTimeSec}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setCurrentTimeSec(val);
+                  if (audioRef.current) audioRef.current.currentTime = val;
+                }}
+                className="h-2 flex-1 accent-indigo-600 cursor-pointer disabled:cursor-not-allowed"
+              />
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(summary?.keyMoments ?? []).map((moment, i) => (
+                  <button
+                    type="button"
+                    key={i}
+                    onClick={() => jumpToTime(moment.atMs)}
+                    className="inline-flex items-center gap-1 rounded-lg bg-indigo-50/80 border border-indigo-200/70 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100/80 transition-colors shadow-2xs"
+                  >
+                    <span>🕒 {formatClock(moment.atMs)}</span>
+                    <span className="text-zinc-600 font-normal">· {moment.title}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* TAB SELECTOR */}
-            <div className="flex items-center gap-2 border-b border-indigo-100 pb-2">
+            <div className="flex flex-wrap items-center gap-1.5 border-b border-indigo-100/80 pb-2">
               <button
                 type="button"
                 onClick={() => setActiveTab("summary")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                   activeTab === "summary"
                     ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
                     : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
@@ -785,7 +1043,7 @@ export default function OutputPage({
               <button
                 type="button"
                 onClick={() => setActiveTab("transcript")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                   activeTab === "transcript"
                     ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
                     : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
@@ -797,7 +1055,7 @@ export default function OutputPage({
               <button
                 type="button"
                 onClick={() => setActiveTab("insights")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                   activeTab === "insights"
                     ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
                     : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
@@ -808,8 +1066,20 @@ export default function OutputPage({
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("full")}
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                  activeTab === "full"
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                }`}
+              >
+                <IconList className="w-3.5 h-3.5" />
+                <span>Full Report</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("json")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                   activeTab === "json"
                     ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs"
                     : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
@@ -842,7 +1112,7 @@ export default function OutputPage({
             )}
 
             {/* SUMMARY CARD (4 Quadrants) */}
-            {(activeTab === "summary" || activeTab === "insights") && (
+            {(activeTab === "summary" || activeTab === "insights" || activeTab === "full") && (
               <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xs">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
@@ -936,7 +1206,7 @@ export default function OutputPage({
             )}
 
             {/* ACTION ITEMS CARD & TABLE */}
-            {(activeTab === "summary" || activeTab === "insights") && (
+            {(activeTab === "summary" || activeTab === "full") && (
               <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xs">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                   <div className="flex items-center gap-2.5">
@@ -949,13 +1219,45 @@ export default function OutputPage({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={!summary} onClick={() => setShowAddActionItemModal(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-indigo-50 border border-indigo-200/80 px-3.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100/70 transition-colors shadow-2xs"
-                  >
-                    <span>+ Add Task</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center rounded-xl bg-zinc-100 p-1 border border-zinc-200/80">
+                      <button
+                        type="button"
+                        onClick={() => setActionFilter("all")}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                          actionFilter === "all" ? "bg-white text-indigo-700 shadow-xs" : "text-zinc-600 hover:text-zinc-900"
+                        }`}
+                      >
+                        All ({actionItemsCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActionFilter("pending")}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                          actionFilter === "pending" ? "bg-white text-indigo-700 shadow-xs" : "text-zinc-600 hover:text-zinc-900"
+                        }`}
+                      >
+                        Pending ({actionItemsCount - completedItemsCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActionFilter("done")}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                          actionFilter === "done" ? "bg-white text-emerald-700 shadow-xs" : "text-zinc-600 hover:text-zinc-900"
+                        }`}
+                      >
+                        Done ({completedItemsCount})
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={!summary || retryingSummary} onClick={() => setShowAddActionItemModal(true)}
+                      className="flex items-center gap-1.5 rounded-xl bg-indigo-50 border border-indigo-200/80 px-3.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100/70 transition-colors shadow-2xs"
+                    >
+                      <span>+ Add Task</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -971,7 +1273,7 @@ export default function OutputPage({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100">
-                      {(summary?.actionItems ?? []).map((item, idx) => {
+                      {filteredActionItems.map(({ item, idx }) => {
                         const isDone = item.status === "done" || item.status === "Done";
                         const priority = item.priority || "Medium";
 
@@ -981,8 +1283,9 @@ export default function OutputPage({
                               <input
                                 type="checkbox"
                                 checked={isDone}
+                                disabled={retryingSummary}
                                 onChange={() => handleToggleActionItem(idx)}
-                                className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                               />
                             </td>
                             <td className="py-3 pr-4 whitespace-nowrap">
@@ -999,9 +1302,10 @@ export default function OutputPage({
                                 <div className="flex flex-col gap-1">
                                   <select
                                     aria-label={`Assignee for task: ${item.task}`}
-                                    value={isKnownAssigneeOption(item.assignee) ? item.assignee : "__custom__"}
+                                    value={customAssigneeIdx === idx ? "__custom__" : (isKnownAssigneeOption(item.assignee) ? item.assignee : "__custom__")}
+                                    disabled={retryingSummary}
                                     onChange={(e) => handleAssigneeSelectChange(idx, e.target.value)}
-                                    className="h-7 rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] font-semibold text-zinc-800 focus:border-indigo-500 focus:outline-none"
+                                    className="h-7 rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] font-semibold text-zinc-800 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
                                   >
                                     <option value="Unknown">Unknown</option>
                                     {distinctSpeakers.map((s) => (
@@ -1017,6 +1321,7 @@ export default function OutputPage({
                                       aria-label={`Custom assignee name for task: ${item.task}`}
                                       defaultValue={isKnownAssigneeOption(item.assignee) ? "" : item.assignee}
                                       placeholder="Enter name"
+                                      disabled={retryingSummary}
                                       onBlur={(e) => handleAssigneeCustomCommit(idx, e.target.value)}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter") {
@@ -1049,8 +1354,7 @@ export default function OutputPage({
                                     : priority === "Medium"
                                     ? "bg-amber-50 text-amber-700 border border-amber-200/80"
                                     : "bg-zinc-100 text-zinc-700 border border-zinc-200"
-                                }`}
-                              >
+                                }`}>
                                 {priority}
                               </span>
                             </td>
@@ -1058,7 +1362,8 @@ export default function OutputPage({
                               <button
                                 type="button"
                                 onClick={() => handleToggleActionItem(idx)}
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                                disabled={retryingSummary}
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                                   isDone
                                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
                                     : "bg-indigo-50 text-indigo-700 border border-indigo-200/80"
@@ -1071,14 +1376,20 @@ export default function OutputPage({
                           </tr>
                         );
                       })}
-                      {!summary?.actionItems.length && <tr><td colSpan={6} className="py-4 text-zinc-500">No action items identified.</td></tr>}
+                      {!filteredActionItems.length && (
+                        <tr>
+                          <td colSpan={6} className="py-5 text-center text-zinc-500 font-medium">
+                            {actionFilter === "all" ? "No action items identified." : `No ${actionFilter} tasks found.`}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
 
-            {(activeTab === "summary" || activeTab === "insights") && (
+            {(activeTab === "summary" || activeTab === "insights" || activeTab === "full") && (
               <section className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xs">
                 <h3 className="mb-3 font-bold">Open Questions</h3>
                 <ul className="space-y-2 text-sm text-zinc-600">
@@ -1089,7 +1400,7 @@ export default function OutputPage({
             )}
 
             {/* TRANSCRIPT CARD */}
-            {(activeTab === "summary" || activeTab === "transcript") && (
+            {(activeTab === "transcript" || activeTab === "full") && (
               <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-xs">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div className="flex items-center gap-2.5">
@@ -1149,6 +1460,7 @@ export default function OutputPage({
                 <div className="space-y-3 mt-4">
                   {paginatedTranscript.map(({ seg, idx }) => {
                     const isStarred = starredIndices.has(idx);
+                    const isCurrentlyPlaying = isPlayingAudio && currentTimeSec * 1000 >= seg.startMs && (seg.endMs ? currentTimeSec * 1000 <= seg.endMs : currentTimeSec * 1000 < seg.startMs + 5000);
                     const speakerColor =
                       idx % 3 === 0
                         ? "text-indigo-700 bg-indigo-50 border-indigo-200"
@@ -1161,7 +1473,9 @@ export default function OutputPage({
                         key={idx}
                         id={`seg-${idx}`}
                         className={`rounded-xl border p-4 transition-all ${
-                          isStarred
+                          isCurrentlyPlaying
+                            ? "border-indigo-400 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-400/40"
+                            : isStarred
                             ? "border-amber-200 bg-amber-50/30 shadow-2xs"
                             : "border-zinc-100 bg-[#f8fafc]/70 hover:bg-white hover:border-indigo-200"
                         }`}
@@ -1174,20 +1488,34 @@ export default function OutputPage({
                             <span className="font-mono text-xs text-zinc-400">
                               {formatClock(seg.startMs)}
                             </span>
+                            {isCurrentlyPlaying && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-white/90 border border-indigo-200 px-1.5 py-0.5 rounded-full">
+                                <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 animate-ping" />
+                                Playing
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => jumpToSegment(idx)}
-                              className="rounded-md bg-white border border-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50 transition-colors"
+                              className="rounded-md bg-white border border-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50 transition-colors shadow-2xs"
                             >
-                              {audioAvailable ? "▶ Play" : "View segment"}
+                              {audioAvailable ? "▶ Play" : "View"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void copyText(seg.text, "Dialogue copied to clipboard")}
+                              className="p-1 text-zinc-400 hover:text-zinc-700 transition-colors"
+                              title="Copy dialogue"
+                            >
+                              <IconDocumentText className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
                               onClick={() => toggleStar(idx)}
-                              className="p-1 text-zinc-400 hover:text-amber-500"
+                              className="p-1 text-zinc-400 hover:text-amber-500 transition-colors"
                               title={isStarred ? "Remove star" : "Mark important"}
                             >
                               <IconStar filled={isStarred} className="w-4 h-4" />
@@ -1195,7 +1523,9 @@ export default function OutputPage({
                           </div>
                         </div>
 
-                        <p className="text-xs leading-relaxed text-zinc-700 font-normal">{seg.text}</p>
+                        <p className="text-xs leading-relaxed text-zinc-700 font-normal">
+                          {renderHighlightedText(seg.text, transcriptQuery)}
+                        </p>
                       </div>
                     );
                   })}

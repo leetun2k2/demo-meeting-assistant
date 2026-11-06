@@ -11,6 +11,9 @@ import {
   MAX_RECORDING_BYTES,
   MAX_RECORDING_MS,
   MAX_UPLOAD_BYTES,
+  NOTES_CHAR_LIMIT,
+  NOTES_HELPER_TEXT,
+  NOTES_PLACEHOLDER,
   PROCESS_BUDGET_MS,
   SONIOX_API_KEY_STORAGE_KEY,
   SUMMARY_BUDGET_MS,
@@ -23,6 +26,7 @@ import { probeStorageAvailable, readStoredValue, removeStoredValue, writeStoredV
 import { hasAllowedAudioFormat, isAudioSizeAllowed } from "@/lib/validateAudio";
 import { isStoredMeetingResult } from "@/lib/meeting/storedResult";
 import { normalizeStoredSpeakerNames } from "@/lib/meeting/cacheCompat";
+import { isWithinNotesLimit } from "@/lib/meeting/notesLimit";
 import { setSessionAudio } from "@/lib/meeting/audioSession";
 import { setSessionResult } from "@/lib/meeting/resultSession";
 import type { MeetingErrorResponse, MeetingResult, SummaryRetryResult } from "@/lib/types";
@@ -82,6 +86,26 @@ function extensionForMimeType(mimeType: string): string {
   return mimeType.includes("mp4") ? "m4a" : "webm";
 }
 
+function IconEye({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function IconEyeOff({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+      <line x1="2" x2="22" y1="2" y2="22" />
+    </svg>
+  );
+}
+
 export default function MeetingWorkspace() {
   const router = useRouter();
 
@@ -97,6 +121,11 @@ export default function MeetingWorkspace() {
   const [audio, setAudio] = useState<AudioInput | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // --- Meeting notes (PRD v4 FR-05) -------------------------------------------
+  // Deliberately never read from LAST_RESULT_STORAGE_KEY/lastResult: notes belong to the
+  // meeting being started, not whatever was left over from the previous one.
+  const [meetingNotes, setMeetingNotes] = useState("");
 
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [recordingElapsedMs, setRecordingElapsedMs] = useState(0);
@@ -396,6 +425,23 @@ export default function MeetingWorkspace() {
     }
   }
 
+  function clearAudio() {
+    if (processing || isRecordingBusy) return;
+    setAudio(null);
+    setAudioError(null);
+    setRecordingNotice(null);
+  }
+
+  function appendNoteTemplate(snippet: string) {
+    if (processing) return;
+    setMeetingNotes((prev) => {
+      const trimmed = prev.trim();
+      if (!trimmed) return snippet;
+      if (trimmed.includes(snippet)) return prev;
+      return `${trimmed}; ${snippet}`;
+    });
+  }
+
   // --- Process meeting ---------------------------------------------------------
   // Checkpoints a result (memory handoff + best-effort cache) without navigating. Used both
   // for the "transcribed" checkpoint (summary not attempted yet) and for the final outcome,
@@ -413,6 +459,15 @@ export default function MeetingWorkspace() {
 
   async function handleProcess() {
     if (!canProcess || !audio) return;
+    if (!isWithinNotesLimit(meetingNotes)) {
+      setProcessError(`Notes are too long for this demo (over ${NOTES_CHAR_LIMIT.toLocaleString()} characters). Shorten them before processing.`);
+      return;
+    }
+
+    // Snapshot once up front: notes typed after this point belong to a later attempt, not this
+    // one (PRD v4 FR-05/FR-06 — the request, the transcribed checkpoint and the final result
+    // must all agree on the same notes).
+    const notesSnapshot = meetingNotes;
 
     const attemptId = ++attemptIdRef.current;
     setProcessStage("uploading");
@@ -468,7 +523,7 @@ export default function MeetingWorkspace() {
         return;
       }
 
-      const transcribed = data as MeetingResult;
+      const transcribed: MeetingResult = { ...(data as MeetingResult), meetingNotes: notesSnapshot };
       setSessionAudio(audio.blob);
 
       if (transcribed.status === "no_speech") {
@@ -500,7 +555,7 @@ export default function MeetingWorkspace() {
         summaryRes = await fetch("/api/summarize-meeting", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript: transcribed.transcript, geminiApiKey: geminiKey }),
+          body: JSON.stringify({ transcript: transcribed.transcript, geminiApiKey: geminiKey, meetingNotes: notesSnapshot }),
           signal: summaryController.signal,
         });
       } catch (err) {
@@ -545,7 +600,13 @@ export default function MeetingWorkspace() {
 
       const summaryResult = summaryData as SummaryRetryResult;
       finalizeResult(
-        { ...transcribed, status: summaryResult.status, summary: summaryResult.summary, summaryError: summaryResult.summaryError },
+        {
+          ...transcribed,
+          status: summaryResult.status,
+          summary: summaryResult.summary,
+          summaryError: summaryResult.summaryError,
+          summaryNotes: summaryResult.status === "completed" ? notesSnapshot : undefined,
+        },
         attemptId,
       );
     } finally {
@@ -654,9 +715,21 @@ export default function MeetingWorkspace() {
             )}
 
             <div className="mt-5 max-w-lg">
-              <label htmlFor="gemini-key-input" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-1.5">
-                Google AI Studio Key (Gemini 2.5 / 3.5)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="gemini-key-input" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider">
+                  Google AI Studio Key (Gemini 2.5 / 3.5)
+                </label>
+                {geminiKey.trim() ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Key Stored Locally
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/80">
+                    Required to Process
+                  </span>
+                )}
+              </div>
               <div className="relative">
                 <input
                   id="gemini-key-input"
@@ -667,15 +740,18 @@ export default function MeetingWorkspace() {
                   value={geminiKey}
                   disabled={processing}
                   onChange={(e) => handleGeminiKeyChange(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 pr-20 text-sm font-mono text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-zinc-100/70 transition-all"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 pr-24 text-sm font-mono text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-zinc-100/70 transition-all"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="rounded-md px-2 py-1 text-[11px] font-semibold text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/60 transition-colors"
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/70 transition-colors"
+                    title={showPassword ? "Hide API Key" : "Show API Key"}
+                    aria-label={showPassword ? "Hide API Key" : "Show API Key"}
                   >
-                    {showPassword ? "Hide" : "Show"}
+                    {showPassword ? <IconEyeOff className="w-3.5 h-3.5" /> : <IconEye className="w-3.5 h-3.5" />}
+                    <span>{showPassword ? "Hide" : "Show"}</span>
                   </button>
                 </div>
               </div>
@@ -924,10 +1000,21 @@ export default function MeetingWorkspace() {
                     </div>
                   </div>
 
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/70 border border-emerald-300 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                    Ready for Ingest
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/70 border border-emerald-300 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                      Ready for Ingest
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearAudio}
+                      disabled={processing || isRecordingBusy}
+                      className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-colors shadow-2xs"
+                      title="Discard audio"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
 
                 {durationOverLimit && (
@@ -949,6 +1036,72 @@ export default function MeetingWorkspace() {
                 {audioError}
               </div>
             )}
+          </section>
+
+          {/* Bento Card 2b: Meeting Notes (PRD v4 FR-05) */}
+          <section
+            aria-labelledby="notes-heading"
+            className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-white/90 p-6 shadow-sm backdrop-blur-md transition-all hover:border-indigo-200 hover:shadow-md"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100/80">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </div>
+              <div>
+                <h2 id="notes-heading" className="text-base font-bold text-zinc-900">
+                  Meeting Notes
+                </h2>
+                <p className="text-xs text-zinc-500 mt-0.5">{NOTES_HELPER_TEXT}</p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <textarea
+                id="meeting-notes-input"
+                value={meetingNotes}
+                disabled={processing}
+                onChange={(e) => setMeetingNotes(e.target.value)}
+                placeholder={NOTES_PLACEHOLDER}
+                maxLength={NOTES_CHAR_LIMIT}
+                rows={3}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-zinc-100/70 transition-all resize-y"
+              />
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="font-semibold text-zinc-400">Quick insert:</span>
+                  <button
+                    type="button"
+                    disabled={processing}
+                    onClick={() => appendNoteTemplate("Speaker 1 is Khánh")}
+                    className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-medium text-zinc-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-colors"
+                  >
+                    + Speaker 1 is Khánh
+                  </button>
+                  <button
+                    type="button"
+                    disabled={processing}
+                    onClick={() => appendNoteTemplate("Speaker 2 is Long")}
+                    className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-medium text-zinc-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-colors"
+                  >
+                    + Speaker 2 is Long
+                  </button>
+                  <button
+                    type="button"
+                    disabled={processing}
+                    onClick={() => appendNoteTemplate("Nexus is project name")}
+                    className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-medium text-zinc-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-colors"
+                  >
+                    + Project Nexus
+                  </button>
+                </div>
+                <div className={`text-[11px] font-mono font-semibold ${meetingNotes.length > NOTES_CHAR_LIMIT * 0.9 ? "text-rose-600" : meetingNotes.length > NOTES_CHAR_LIMIT * 0.75 ? "text-amber-600" : "text-zinc-400"}`}>
+                  {meetingNotes.length.toLocaleString()} / {NOTES_CHAR_LIMIT.toLocaleString()}
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* Bento Card 3: Processing & Action Launch */}

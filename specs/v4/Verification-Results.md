@@ -127,3 +127,37 @@ Live, 5 fixture dựng tay theo đúng mô tả, nạp qua `localStorage['meetin
 - TC-005: chưa test reload sau khi sửa assignee (dữ liệu nằm trong `localStorage`, dự kiến giữ nguyên theo cơ chế `persist()` có sẵn, nhưng chưa xác nhận trực tiếp).
 - TC-006: chưa bấm nút "Retry Summary" trực tiếp trên một kết quả `summary_failed` thật trong cùng một phiên UI (thiếu công cụ chặn network theo điều kiện trong bộ công cụ hiện có); đã có bằng chứng tương đương một phần qua lỗi provider thật gặp ở TC-007 và qua luồng "Generate Summary" từ trạng thái `transcribed`.
 - Không đo lường độ chính xác tổng thể của việc nhận diện tên trên nhiều cuộc họp khác; đây không phải mục tiêu của v4 (PRD mục "Ngoài phạm vi").
+
+## Bổ sung notes (FR-05–07) — triển khai và kiểm chứng ngày 2026-11-06
+
+Revision triển khai: chưa commit, trên HEAD `28a54c1a617d4e16227ca9298fe42f76172a3b96` + diff làm việc hiện tại (`lib/types.ts`, `lib/constants.ts`, `lib/meeting/notesLimit.ts` mới, `lib/meeting/gemini.ts`, `lib/meeting/storedResult.ts`, `app/api/summarize-meeting/route.ts`, `components/MeetingWorkspace.tsx`, `components/OutputPage.tsx`, `app/results/page.tsx`). Không đổi `app/api/process-meeting/route.ts` (đúng thiết kế: notes không ảnh hưởng bước extraction). Môi trường: macOS local, `bun run dev` tại `http://localhost:3000`, Chrome qua Claude-in-Chrome.
+
+Static checks: `bunx tsc --noEmit`, `bun run lint`, `bun run build` — cả ba **PASS**, không cảnh báo mới.
+
+Kiểm chứng chức năng live (Gemini API key thật có sẵn trong trình duyệt trước khi test; xem sự cố cuối mục):
+
+| Ca | Kết quả |
+|---|---|
+| TC-009 (notes đầu vào, mapping) | PASS một phần — xác nhận qua fixture dựng tay ở boundary summary (xem dưới), không phải qua toàn bộ audio chain |
+| TC-010 (sửa notes, regenerate thành công) | PASS |
+| TC-011 (regenerate lỗi, giữ kết quả cũ, retry) | PASS cho nhánh lỗi+giữ kết quả; chưa test double-click/điều hướng khỏi trang giữa chừng |
+| TC-012 (nguồn dữ liệu, notes mơ hồ/độc hại) | NOT_RUN — chưa chạy đủ 4 biến thể (a)-(d) của fixture N |
+| TC-013 (giới hạn/tương thích) | PASS một phần — xem chi tiết dưới |
+
+Fixture dựng tay (tương đương fixture N của Test Spec, bơm thẳng vào `localStorage['meeting-assistant.lastResult']` làm một `completed` result có sẵn thay vì chạy qua audio thật):
+
+1. **TC-010 — sửa notes rồi Regenerate thành công**: kết quả completed ban đầu có `speakerNames = {Speaker 1: Khánh, Speaker 2: Long}` với `meetingNotes = summaryNotes = "Speaker 1 là Khánh; Speaker 2 là Long; Nexus là tên dự án."`. Sửa notes thêm `"Speaker 1 là Lan."` (đính chính ngược với suy luận ban đầu) → banner "Notes changed since this summary — Regenerate to apply them." hiện đúng lúc → bấm Regenerate → một request `POST /api/summarize-meeting` live. Kết quả: `speakerNames[0].resolvedName = "Lan"` (đè đúng theo đính chính rõ ràng mới nhất), toàn bộ prose/summary/speaking-breakdown dùng "Lan" nhất quán, transcript gốc và timestamp không đổi, `meetingNotes === summaryNotes` sau khi áp dụng (banner biến mất đúng), Raw JSON xuất đủ `meetingNotes`/`summaryNotes`. Tên người thứ ba "Minh" được nhắc trong transcript không bị biến thành speaker.
+2. **TC-011 — Regenerate lỗi giữ nguyên kết quả cũ**: từ trạng thái completed ở trên, sửa notes thêm `"Long là leader."`, cố ý đặt API key sai trong `localStorage`, bấm Regenerate. Kết quả: lỗi `Gemini request failed (400). API key not valid...` hiển thị tại chỗ ("Last attempt failed: ..."), **summary/speakerNames/summaryNotes cũ được giữ nguyên nguyên vẹn**, `status` vẫn `"completed"`, banner "Notes changed..." vẫn đúng (notes mới chưa được áp dụng). Sau đó không kiểm tra lại nhánh retry thành công với key hợp lệ do sự cố key ở dưới.
+3. **TC-013 (một phần)**: xác nhận field `meetingNotes`/`summaryNotes` thiếu ở cache cũ không làm validator từ chối toàn bộ result (optional field, dùng `?? ""` tại nơi hiển thị). Chưa test rõ ràng: POST với notes 10.000/10.001 ký tự, `null`/object notes, cache sai kiểu cho hai field này, UI nhập quá giới hạn trên `maxLength`.
+
+### Sự cố trong lúc kiểm chứng — mất giá trị Gemini API key cũ trong trình duyệt
+
+Khi dựng ca TC-011, agent đã ghi đè `localStorage['meeting-assistant.geminiApiKey']` bằng một chuỗi giả để ép lỗi provider, nhưng **không lưu lại giá trị thật trước đó** — giá trị gốc không còn khôi phục được từ trong trình duyệt. Sau khi test xong, agent đã xóa field này (và xóa fixture `lastResult` giả dùng để test) để tránh để lại dữ liệu giả/khóa hỏng. **Người dùng cần nhập lại Gemini API key thật của mình** tại trang chủ trước khi dùng lại ứng dụng; đây là bản sao client-side của key, không phải key gốc trên Google AI Studio nên không có rủi ro mất quyền truy cập, chỉ mất bản lưu cục bộ trong trình duyệt này.
+
+## Giới hạn chưa xác nhận — phần notes
+
+- TC-009 đầy đủ (qua audio thật, không phải fixture bơm thẳng cache) chưa chạy — cần audio F1 như TC-001 gốc.
+- TC-012 (notes chỉ liệt kê tên, notes tự mâu thuẫn, notes chứa chỉ dẫn độc hại/yêu cầu bịa quyết định) chưa chạy; đây là ca quan trọng nhất để xác nhận an toàn chống prompt-injection qua notes.
+- TC-013: giới hạn 10.000/10.001 ký tự ở route và validation kiểu dữ liệu sai (`null`/object) chưa có bằng chứng request thật; chỉ xác nhận qua đọc code (`app/api/summarize-meeting/route.ts`) rằng logic kiểm tra tồn tại trước lời gọi provider.
+- Chưa test khóa textarea/nút trong lúc `retryingSummary` đang pending bằng quan sát trực tiếp (request hoàn tất quá nhanh để bắt kịp qua công cụ trình duyệt tự động); đã xác nhận qua đọc code rằng các control liên quan (`textarea`, checkbox, select, nút trạng thái, nút Add Task) đều có `disabled={retryingSummary}`.
+- Chưa test ca double-click Regenerate hoặc điều hướng khỏi `/results` giữa lúc một request đang chờ (token guard `generateTokenRef`/`mountedRef`/so sánh `processedAt` mới chỉ được xác nhận qua đọc code, chưa qua kịch bản race-condition thật).

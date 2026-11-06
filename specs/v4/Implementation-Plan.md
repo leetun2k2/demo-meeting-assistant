@@ -36,3 +36,21 @@ Phụ thuộc contract T1/T2.
 Thực hiện [Test Specification](Test-Specification.md) và lưu `Verification-Results.md` với revision thực tế, thay đổi, checks, từng ca pass/fail/not-run và evidence. Không thêm unit tests theo mặc định. Commands sẵn có: `bunx tsc --noEmit`, `bun run lint`, `bun run build` (scripts trong package.json). Đây là kế hoạch, chưa chạy commands.
 
 Thứ tự: T1 → T2 → T3 → verification. Có thể kiểm chứng AI của T1 trước khi T2/T3 hoàn tất để phát hiện sớm vấn đề chất lượng. Không chờ live provider để làm các thay đổi deterministic. Chưa có quyền triển khai, commit, deploy hoặc chạy functional tests trong lượt planning này.
+
+## Bổ sung N1–N3 — notes và regenerate (chưa triển khai)
+
+Baseline T1–T3 đã có code ở HEAD `28a54c1`; không triển khai lại máy móc. Đối chiếu defects/prerequisites trong Verification Results lịch sử khi chạm bề mặt liên quan; chưa coi baseline đã nghiệm thu.
+
+### N1 — Nhận notes và tạo summary có căn cứ
+
+Mở rộng types/summary route/Gemini theo Technical Design §4: optional meetingNotes, validation 10.000 ký tự, prompt hai nguồn có phân biệt, explicit correction precedence, map chỉ raw labels thật. Giữ omitted/empty backward compatible và summary response hiện có. Giữ transcript budget, timeout, key handling, no_speech. Hoàn tất khi request hợp lệ đưa đủ hai nguồn vào một inference, input sai trả 400 trước provider; TC-009/012/013 là verification dự kiến.
+
+### N2 — Notes xuyên suốt workspace/results và cache
+
+Theo contract N1; có thể chuẩn bị UI song song về mặt trình tự công việc. Thêm textarea trước Process và đầu Results, truyền cùng checkpoint/session/result, persist notes đang chỉnh và summaryNotes đã áp dụng. Cập nhật validator/cache boundary cho field optional; JSON giữ snapshot và notes. Kết quả cũ dùng rỗng, cache lỗi giữ memory, cuộc họp mới rỗng. Hoàn tất khi notes đi từ pre-input tới lần summary đầu, reload và export, hiện trạng chưa áp dụng khi sửa; TC-009/013.
+
+### N3 — Tạo lại summary thành công/lỗi an toàn
+
+Phụ thuộc N1/N2. Mở Generate/Retry hiện có cho completed thành Regenerate; đưa notes snapshot vào mọi summary request. Results owner áp dụng functional update nguyên tử, giữ kết quả cũ nếu lỗi. Disable thao tác xung đột lúc pending, cleanup/ignore stale completion; nêu rõ thay tasks/sửa thủ công. Không gọi extraction và không tạo lại chỉ từ notes khi no_speech. Hoàn tất khi TC-010/011 quan sát được cả success/failure/retry và tên đồng bộ mọi bề mặt.
+
+Sau N1 → N2 → N3, chạy checks sẵn có và test spec liên quan; ghi evidence mới, không ghi đè kết quả lịch sử như thể cùng revision. Không thêm unit tests, không triển khai code/chạy functional tests trong lượt planning này.

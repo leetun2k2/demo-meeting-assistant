@@ -56,3 +56,13 @@ export const CLEANUP_BUDGET_MS = 10_000;
 // Exactly this many characters is allowed; the check runs before any model call, never a silent
 // truncation.
 export const SUMMARY_TEXT_CHAR_LIMIT = 200_000;
+
+// Cap on user-provided meeting notes (PRD v4 FR-05). Exactly this many characters is allowed;
+// over the limit is rejected with a clear error before any model call, never cut silently.
+export const NOTES_CHAR_LIMIT = 10_000;
+
+export const NOTES_PLACEHOLDER =
+  "Speaker 1 là Khánh; Speaker 2 là Long; Nexus là tên dự án.";
+
+export const NOTES_HELPER_TEXT =
+  "Optional. Add context, terminology or explicit speaker corrections (e.g. \"Speaker 1 is Khánh\"). A plain list of names is not enough to identify who is speaking.";
