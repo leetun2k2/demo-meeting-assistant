@@ -97,7 +97,7 @@ export function toMarkdown(result: MeetingResult): string {
     lines.push("No transcript available.");
   } else {
     for (const seg of transcript) {
-      const speaker = summary ? displaySpeaker(seg.speaker, summary.speakerNames) : seg.speaker;
+      const speaker = displaySpeaker(seg.speaker, summary?.speakerNames ?? []);
       lines.push(`**[${formatClock(seg.startMs)}] ${speaker}:** ${seg.text}`, "");
     }
   }

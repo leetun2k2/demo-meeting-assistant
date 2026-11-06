@@ -4,10 +4,10 @@ import type {
   KeyMoment,
   MeetingSummary,
   ReferencedInsight,
-  SpeakerNameResolution,
   TranscriptSegment,
 } from "@/lib/types";
 import { applySpeakerNamesToSummary } from "@/lib/meeting/display";
+import { buildSpeakerNameTable } from "@/lib/meeting/speakerNames";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
@@ -126,10 +126,20 @@ function buildSpeakerNamesInstruction(speakerLabels: string[]): string {
   return `
 
 "speakerNames": resolve a real name for each of these speaker labels, with exactly one entry per label: ${list}.
-For each, set "resolvedName" to a real name only when the transcript gives direct evidence that THIS speaker is that person: an explicit self-introduction, or a context clear enough that a reply is unmistakably from the named person being addressed. Otherwise set "resolvedName" to null — never guess.
+Consider evidence from the ENTIRE transcript, not just the opening lines — a self-introduction or confirmation appearing late can establish who a speaker label was all along, and that name then applies to all of that speaker's earlier lines too.
+Set "resolvedName" to a real name only when the transcript gives direct evidence that THIS speaker is that person:
+- A clear self-introduction (e.g. "Mình là Khánh" / "I'm Khánh") — resolve that speaker to Khánh.
+- An unambiguous call-and-response: someone is addressed by name and replies in a way that leaves no doubt they are that person (e.g. "Long, xác nhận giúp mình bạn là Long và sẽ demo nhé" followed by "Đúng, mình là Long, mình sẽ demo") — resolve the responder to Long.
+Do NOT resolve a name in any of these cases — leave "resolvedName" null instead:
+- A bare mention or instruction naming someone, with no confirming reply (e.g. "Long demo luôn đi" or "Khánh ra chỗ team"). The next speaker's line is never automatic confirmation of that name.
+- A third person being discussed or assigned work rather than addressed directly (e.g. "Khánh suy nghĩ logo cho em Khánh") — the name may belong to someone being talked about or given a task, not to whoever is currently speaking.
+- Multiple people replying, overlapping speech, or a topic change right after a name is mentioned, such that you cannot tell which specific person responded.
+- A label whose turns read like more than one person (mixed voices or topics suggesting a diarization error) — never force one name onto a mixed label.
 Never attach a name to a speaker only because that name was mentioned about someone else (e.g. a speaker saying "Minh sent me the report" does not make the current speaker Minh).
-Use the same resolved identity for a speaker label throughout the whole transcript; never merge two different speaker labels into one identity just because they share a name, and never resolve two different real people to the same speaker label.
-If evidence is contradictory or uncertain, set "resolvedName" to null rather than guess.`;
+Use the same resolved identity for a speaker label throughout the whole transcript; never merge two different speaker labels into one identity just because they share a name. Two different labels may genuinely be confirmed as the same real name — do not force them apart — but never guess that to avoid leaving one null.
+Keep the name exactly as spoken, including Vietnamese diacritics; never add a surname, title or role, and never treat a pronoun ("anh", "em", "mình") or a role alone as a name.
+If evidence is contradictory or uncertain, set "resolvedName" to null rather than guess.
+When referring to a speaker by number in any prose field (executiveSummary, discussions, decisions, risks, unresolvedQuestions, keyMoments, nextSteps, followUpEmail), always write "Speaker N" exactly, never a name you resolved — the app substitutes the correct display name afterward from this table. A third person's real name mentioned in the conversation should be written as-is, not replaced.`;
 }
 
 function transcriptToPromptText(segments: TranscriptSegment[]): string {
@@ -295,26 +305,6 @@ function asKeyMomentArray(value: unknown): KeyMoment[] {
   return result;
 }
 
-function asSpeakerNames(value: unknown, knownLabels: string[]): SpeakerNameResolution[] {
-  const resolved = new Map<string, string | null>();
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      if (!item || typeof item !== "object") continue;
-      const o = item as Record<string, unknown>;
-      const speakerLabel = typeof o.speakerLabel === "string" ? o.speakerLabel : null;
-      if (!speakerLabel || !knownLabels.includes(speakerLabel)) continue;
-      const resolvedName = typeof o.resolvedName === "string" && o.resolvedName.trim() ? o.resolvedName : null;
-      resolved.set(speakerLabel, resolvedName);
-    }
-  }
-  // Any transcript speaker missing from the model's output defaults to unresolved rather than
-  // failing the summary — an omission is always safe to treat as "not enough evidence".
-  return knownLabels.map((speakerLabel) => ({
-    speakerLabel,
-    resolvedName: resolved.get(speakerLabel) ?? null,
-  }));
-}
-
 function asFollowUpEmail(value: unknown): FollowUpEmail {
   if (!value || typeof value !== "object") {
     throw new GeminiError("Gemini follow-up email was not a JSON object.");
@@ -367,7 +357,7 @@ function validateSummary(value: unknown, speakerLabels: string[]): MeetingSummar
     return { assignee: o.assignee, task: o.task, deadline: o.deadline, priority: ["High", "Medium", "Low"].includes(String(o.priority)) ? String(o.priority) : "Medium", status: "open" };
   });
 
-  const speakerNames = asSpeakerNames(obj.speakerNames, speakerLabels);
+  const speakerNames = buildSpeakerNameTable(obj.speakerNames, speakerLabels);
   const keyMoments = asKeyMomentArray(obj.keyMoments);
   const followUpEmail = asFollowUpEmail(obj.followUpEmail);
 

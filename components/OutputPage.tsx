@@ -256,6 +256,10 @@ export default function OutputPage({
   // Retry state
   const [retryingSummary, setRetryingSummary] = useState(false);
 
+  // Inline assignee editor state (PRD v4 FR-03/AC-06): tracks which action item row currently
+  // has its free-text name field open, so selecting "Custom name…" doesn't require a modal.
+  const [customAssigneeIdx, setCustomAssigneeIdx] = useState<number | null>(null);
+
   async function copyText(text: string, message: string) {
     try { await navigator.clipboard.writeText(text); showToast(message); }
     catch { showToast("Could not copy. Please select and copy the text manually."); }
@@ -398,6 +402,35 @@ export default function OutputPage({
     setNewTask("");
     setShowAddActionItemModal(false);
     showToast("Added new action item");
+  }
+
+  // True when `assignee` is exactly "Unknown" or a raw speaker key already present in this
+  // transcript — i.e. it can be shown as a plain <select> option rather than free text.
+  function isKnownAssigneeOption(assignee: string): boolean {
+    return assignee === "Unknown" || distinctSpeakers.includes(assignee);
+  }
+
+  // Edits only the one action item at idx — never speakerNames or any other task (PRD v4
+  // FR-03/AC-10). Selecting a raw speaker key links that task to that speaker; "Unknown" clears
+  // ownership; "__custom__" just opens the free-text field below without changing the task yet.
+  function handleAssigneeSelectChange(idx: number, value: string) {
+    if (!summary) return;
+    if (value === "__custom__") {
+      setCustomAssigneeIdx(idx);
+      return;
+    }
+    setCustomAssigneeIdx((cur) => (cur === idx ? null : cur));
+    const next = summary.actionItems.map((item, i) => (i === idx ? { ...item, assignee: value } : item));
+    onActionItemsChange(next);
+  }
+
+  function handleAssigneeCustomCommit(idx: number, value: string) {
+    if (!summary) return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const next = summary.actionItems.map((item, i) => (i === idx ? { ...item, assignee: trimmed } : item));
+    onActionItemsChange(next);
+    setCustomAssigneeIdx(null);
   }
 
   async function handleRetrySummary() {
@@ -954,16 +987,47 @@ export default function OutputPage({
                             </td>
                             <td className="py-3 pr-4 whitespace-nowrap">
                               <div className="flex items-center gap-2 text-zinc-800 font-semibold">
-                                <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-2xs ${
+                                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-2xs ${
                                   idx % 3 === 0
                                     ? "bg-gradient-to-tr from-indigo-500 to-purple-600"
                                     : idx % 3 === 1
                                     ? "bg-gradient-to-tr from-cyan-500 to-blue-600"
                                     : "bg-gradient-to-tr from-amber-500 to-orange-600"
                                 }`}>
-                                  {item.assignee.slice(-2)}
+                                  {displaySpeaker(item.assignee, summary?.speakerNames || []).slice(-2).toUpperCase()}
                                 </div>
-                                <span>{displaySpeaker(item.assignee, summary?.speakerNames || [])}</span>
+                                <div className="flex flex-col gap-1">
+                                  <select
+                                    aria-label={`Assignee for task: ${item.task}`}
+                                    value={isKnownAssigneeOption(item.assignee) ? item.assignee : "__custom__"}
+                                    onChange={(e) => handleAssigneeSelectChange(idx, e.target.value)}
+                                    className="h-7 rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] font-semibold text-zinc-800 focus:border-indigo-500 focus:outline-none"
+                                  >
+                                    <option value="Unknown">Unknown</option>
+                                    {distinctSpeakers.map((s) => (
+                                      <option key={s} value={s}>
+                                        {displaySpeaker(s, summary?.speakerNames || [])}
+                                      </option>
+                                    ))}
+                                    <option value="__custom__">Custom name…</option>
+                                  </select>
+                                  {(customAssigneeIdx === idx || !isKnownAssigneeOption(item.assignee)) && (
+                                    <input
+                                      type="text"
+                                      aria-label={`Custom assignee name for task: ${item.task}`}
+                                      defaultValue={isKnownAssigneeOption(item.assignee) ? "" : item.assignee}
+                                      placeholder="Enter name"
+                                      onBlur={(e) => handleAssigneeCustomCommit(idx, e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          handleAssigneeCustomCommit(idx, e.currentTarget.value);
+                                        }
+                                      }}
+                                      className="h-7 rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] text-zinc-800 focus:border-indigo-500 focus:outline-none"
+                                    />
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 pr-4 max-w-xs break-words">
@@ -1332,7 +1396,7 @@ export default function OutputPage({
                     <option value="">Unassigned</option>
                     {distinctSpeakers.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {displaySpeaker(s, summary?.speakerNames || [])}
                       </option>
                     ))}
                   </select>

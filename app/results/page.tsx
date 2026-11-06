@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import OutputPage from "@/components/OutputPage";
 import { isStoredMeetingResult } from "@/lib/meeting/storedResult";
+import { normalizeStoredSpeakerNames } from "@/lib/meeting/cacheCompat";
 import { getSessionAudioUrl } from "@/lib/meeting/audioSession";
 import { getSessionResult, setSessionResult } from "@/lib/meeting/resultSession";
 import { LAST_RESULT_STORAGE_KEY } from "@/lib/constants";
@@ -30,9 +31,10 @@ export default function ResultsPage() {
       if (raw) {
         try {
           const parsed: unknown = JSON.parse(raw);
-          if (isStoredMeetingResult(parsed)) {
-            setResult(parsed);
-            setSessionResult(parsed);
+          const normalized = normalizeStoredSpeakerNames(parsed);
+          if (isStoredMeetingResult(normalized)) {
+            setResult(normalized);
+            setSessionResult(normalized);
           }
         } catch {
           // Corrupted entry; ignore invalid cache

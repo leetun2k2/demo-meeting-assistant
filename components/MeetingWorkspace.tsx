@@ -22,6 +22,7 @@ import { formatBytes, formatClock } from "@/lib/format";
 import { probeStorageAvailable, readStoredValue, removeStoredValue, writeStoredValue } from "@/lib/storage";
 import { hasAllowedAudioFormat, isAudioSizeAllowed } from "@/lib/validateAudio";
 import { isStoredMeetingResult } from "@/lib/meeting/storedResult";
+import { normalizeStoredSpeakerNames } from "@/lib/meeting/cacheCompat";
 import { setSessionAudio } from "@/lib/meeting/audioSession";
 import { setSessionResult } from "@/lib/meeting/resultSession";
 import type { MeetingErrorResponse, MeetingResult, SummaryRetryResult } from "@/lib/types";
@@ -142,7 +143,7 @@ export default function MeetingWorkspace() {
       if (savedResultRaw) {
         try {
           const parsed: unknown = JSON.parse(savedResultRaw);
-          if (isStoredMeetingResult(parsed)) setHasPreviousResult(true);
+          if (isStoredMeetingResult(normalizeStoredSpeakerNames(parsed))) setHasPreviousResult(true);
         } catch {
           // Corrupted entry; ignore
         }

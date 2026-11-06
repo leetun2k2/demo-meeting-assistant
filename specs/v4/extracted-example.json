@@ -1,0 +1,1942 @@
+{
+  "status": "summary_failed",
+  "transcript": [
+    {
+      "speaker": "Speaker 1",
+      "startMs": 400,
+      "endMs": 1400,
+      "text": "làm trên cái"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 5000,
+      "endMs": 5700,
+      "text": "À bên đây thấy nè."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 14600,
+      "endMs": 17800,
+      "text": "Đúng ra cái chỗ là phải xem được cái nhưng mà hiện tại nó không thấy."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 24100,
+      "endMs": 25100,
+      "text": "Ủa code mới chưa hả bạn?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 26000,
+      "endMs": 28100,
+      "text": "Không chưa. Chưa hết à?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 28600,
+      "endMs": 30000,
+      "text": "Chưa chưa thấy highlight là chưa phải mới nhất."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 31000,
+      "endMs": 34800,
+      "text": "Ủa có khi mấy cái mới chứ cái mới nhất em để cái lấy hết rồi mà."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 36700,
+      "endMs": 37100,
+      "text": "Mới buôn luôn á."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 43600,
+      "endMs": 46700,
+      "text": "Cái mới để cách đây có lúc mới nhắn là em mới để luôn đó."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 52000,
+      "endMs": 52200,
+      "text": "Đúng rồi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 57100,
+      "endMs": 68300,
+      "text": "Mà cái này Ủa có cần phải cài cái đống gì không? Hay là cứ vô rồi cho nó chạy code thôi? Cho nó chạy bên trong đây nó có sẵn cái bộ skill bên trong rồi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 85900,
+      "endMs": 86900,
+      "text": "Xong rồi Long demo luôn đi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 91000,
+      "endMs": 93100,
+      "text": "bên chưa? Máy anh đủ bên chưa?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 93900,
+      "endMs": 95300,
+      "text": "Cái cái sạc của điện thoại sạc lâu lắm."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 100300,
+      "endMs": 101100,
+      "text": "Máy tắt mới lại."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 101000,
+      "endMs": 105400,
+      "text": "Ủa là là em không mang sạc về. Dạ em không mang sạc, em dùng"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 124800,
+      "endMs": 125700,
+      "text": "Code về trắng tươi anh em."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 127200,
+      "endMs": 127500,
+      "text": "Cái gì đấy?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 131800,
+      "endMs": 132000,
+      "text": "Ẩn đi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 133900,
+      "endMs": 137400,
+      "text": "Rồi nó xong rồi nè. Nhìn giống mạng lag không cơ."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 137800,
+      "endMs": 139300,
+      "text": "Có khi phải reset lại Khánh."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 141600,
+      "endMs": 143500,
+      "text": "Có khi phải reset lại đó. Hay là"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 143500,
+      "endMs": 144700,
+      "text": "Đúng rồi. Ý là nó đang nó đang"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 145200,
+      "endMs": 147600,
+      "text": "Hoặc là nó thiếu store đó."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 158200,
+      "endMs": 167300,
+      "text": "Đúng rồi giờ nó nó highlight selected ở bên cái thằng Đó rồi bên cái thanh menu đó. Ừ menu nó có nó có cái nó có cái highlight Bữa giờ ông"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 167400,
+      "endMs": 172100,
+      "text": "À cái cái đang chạy kìa. Nó lên hiện cái cái cái stream đang chạy cái gì gì kìa."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 172400,
+      "endMs": 173300,
+      "text": "Ờ ờ buôn code mới á."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 173800,
+      "endMs": 176000,
+      "text": "Ờ chắc nãy nãy chắc nó chưa chưa tôi fix á."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 181500,
+      "endMs": 183000,
+      "text": "Ủa nãy em vừa vừa đúng không?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 183500,
+      "endMs": 184100,
+      "text": "Đúng rồi á."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 184400,
+      "endMs": 187200,
+      "text": "Đó giờ nó mới thấy nè, mới thấy Nãy chắc lỗi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 193300,
+      "endMs": 195300,
+      "text": "Ủa giờ mới chạy ra ngoài xem mấy nó ra chưa?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 196400,
+      "endMs": 197600,
+      "text": "Giờ bắt ra nó có bị ấy không?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 199600,
+      "endMs": 200000,
+      "text": "Cloud mà."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 202400,
+      "endMs": 205500,
+      "text": "Có đúng không? Bây giờ sẽ bấm qua xem. Thấy không?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 208500,
+      "endMs": 210000,
+      "text": "Ghê không? Đẹp không?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 211500,
+      "endMs": 211800,
+      "text": "Hợp lý."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 214600,
+      "endMs": 220200,
+      "text": "Nãy em nghĩ Nãy em nghĩ cho nó chọn cái cả folder trên máy xong rồi chạy giống như Cloud"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 220000,
+      "endMs": 220300,
+      "text": "Đúng rồi có"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 220300,
+      "endMs": 220400,
+      "text": "Code."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 220900,
+      "endMs": 221300,
+      "text": "có mà."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 221300,
+      "endMs": 221900,
+      "text": "Đúng rồi có mà."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 222200,
+      "endMs": 223900,
+      "text": "Có cái bấm cái chỗ á."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 226100,
+      "endMs": 226200,
+      "text": "Ừ."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 229700,
+      "endMs": 233800,
+      "text": "demo đi, demo cái đó đi. Đây cái luôn đi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 236800,
+      "endMs": 240300,
+      "text": "Đó nó ra nè, rồi chạy nè. Chạy hai cái"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 240200,
+      "endMs": 247000,
+      "text": "Nhưng mà nó Ủa nhưng mà nó kết hợp được với À có nghĩa là tất cả cái là đều đều chạy song song được hết đó."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 248000,
+      "endMs": 250500,
+      "text": "À nên nó nó tự điều phối là dùng cái nào gì đúng không?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 251000,
+      "endMs": 258000,
+      "text": "Một là em để auto, hai là cái đoạn mà anh anh cái chỗ team á, Khánh ra chỗ team để cái chỗ team trong Đó đó cái team này nè."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 258000,
+      "endMs": 258600,
+      "text": "Nó chọn đúng không?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 259200,
+      "endMs": 261500,
+      "text": "Ừ là một là em để nó auto nó tự điều phối, hai là em chọn."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 263900,
+      "endMs": 265400,
+      "text": "Nhưng mà nếu anh không có thì sao?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 266300,
+      "endMs": 273800,
+      "text": "Thì anh cứ dùng hai con thôi giống ví dụ em có mỗi với là em dùng hai con thôi. Khánh nó có bốn nó hiện bốn con nè. Có con nào nó hiện con ấy à?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 276900,
+      "endMs": 277800,
+      "text": "Khánh chơi cả bốn luôn mà."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 278900,
+      "endMs": 284200,
+      "text": "Chơi hết à? Nhưng mà nên hai con Ờ bốn nhiều khi nó không có hay á."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 284700,
+      "endMs": 285200,
+      "text": "Đúng rồi bốn là"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 285100,
+      "endMs": 285600,
+      "text": "Ờ anh thử thôi á."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 287000,
+      "endMs": 288100,
+      "text": "Em vô anh thử anh thử cho"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 289300,
+      "endMs": 299400,
+      "text": "Khánh demo cái đi là anh em hiểu à. Có cái Tự nhiên bấm cái nó bật cái Đó con nó không hiện cái And gì?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 300600,
+      "endMs": 301800,
+      "text": "Thì là để build mới mà."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 302500,
+      "endMs": 306400,
+      "text": "Ờ cái để build mới. Cái hơi xấu vậy con đây luôn quá."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 307400,
+      "endMs": 310100,
+      "text": "Cái mở cái mở thư mục nó bị lâu lâu á sao?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 310500,
+      "endMs": 310800,
+      "text": "Lâu hả?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 311000,
+      "endMs": 315000,
+      "text": "Không không. Nó bị chậm lắm á. Cũng không biết tại sao nữa."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 318000,
+      "endMs": 318300,
+      "text": "Cái gì vậy?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 318600,
+      "endMs": 321700,
+      "text": "Không phải không phải tại vì là nó phải đi qua đường của thằng"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 322700,
+      "endMs": 322900,
+      "text": "Bridge à?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 323800,
+      "endMs": 323900,
+      "text": "Bridge."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 325100,
+      "endMs": 325200,
+      "text": "Ờ."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 329000,
+      "endMs": 329900,
+      "text": "Nhưng mà nhưng mà nó hơi lâu thiệt nha."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 330900,
+      "endMs": 331100,
+      "text": "Lâu quá."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 331400,
+      "endMs": 332500,
+      "text": "Nhưng mà anh nhớ hồi xưa bên"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 335200,
+      "endMs": 339500,
+      "text": "bên chỗ chỗ nó đâu có lâu gì đâu."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 342800,
+      "endMs": 346000,
+      "text": "Giờ anh đang cho nó chỉ có folder mới mới được."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 346500,
+      "endMs": 349400,
+      "text": "Thì không có là cũng tự mà. Anh nhớ là cái anh anh bắt nó là"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 351100,
+      "endMs": 355900,
+      "text": "Giờ em chọn cái thằng Ủa mà sao cái chọn cái mấy cái nhìn nó lởm vậy?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 357200,
+      "endMs": 359700,
+      "text": "Giờ chắc không để ý á. Có gì để em qua cho anh nhìn cho nó đẹp."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 361100,
+      "endMs": 361400,
+      "text": "Khoanh luôn đi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 361800,
+      "endMs": 362500,
+      "text": "Cho nó vòng vòng đi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 367200,
+      "endMs": 369300,
+      "text": "Giờ anh thử chọn một cái đúng không? Giờ anh thử chọn luôn nha."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 370000,
+      "endMs": 370700,
+      "text": "Em thử xem được không?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 377400,
+      "endMs": 378000,
+      "text": "Chọn cái kìa."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 379300,
+      "endMs": 379700,
+      "text": "Chọn được không?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 381000,
+      "endMs": 382200,
+      "text": "Chọn cái nó nặng lắm ba ha."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 383500,
+      "endMs": 389300,
+      "text": "Rồi build build mới thôi. Thử build lên Lên lên bay cái gì? À ok. Ủa nhưng mà à"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 389600,
+      "endMs": 390000,
+      "text": "Apple đó."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 393000,
+      "endMs": 394400,
+      "text": "Mấy cái này nó sao quá nè."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 395300,
+      "endMs": 396000,
+      "text": "Sao sao là sao?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 401800,
+      "endMs": 402900,
+      "text": "Anh chắc phải mạng kiếm về."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 403300,
+      "endMs": 408000,
+      "text": "Thì này tạm thôi cho nhìn cho đẹp đẹp tí thôi. Sau sau sau này muốn thì bổ sung sau."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 411000,
+      "endMs": 411800,
+      "text": "Sao bằng design được?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 421900,
+      "endMs": 433700,
+      "text": "Cái này đi. Nhưng mà cái này hiện tại chưa nhúng xuống cái này đâu. Nên là nó không đúng không? Anh đang anh đang Anh đang cố cho việc đó. hiện tại là đang cho đẹp thôi à."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 434800,
+      "endMs": 435100,
+      "text": "Ủa vậy hả?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 436300,
+      "endMs": 437100,
+      "text": "Cái này là cho thôi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 438400,
+      "endMs": 438900,
+      "text": "Ừ nó đổi"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 439400,
+      "endMs": 441800,
+      "text": "Anh đang code thêm cái phần đó à. Chứ không phải không được."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 443400,
+      "endMs": 452700,
+      "text": "Bây giờ để anh thử add cái cái của anh thử chạy coi nha. Lâu không chạy chạy ở chạy một cái ấy nó lâu không? Cái cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 456700,
+      "endMs": 465000,
+      "text": "Chắc khoảng cũng lâu nha. Em đang bấm chạy chắc khoảng 30 phút sau mới có. Tại nó phải lên Khánh về cà lại cái lúc nãy xem nó đi đi đến đâu."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 466300,
+      "endMs": 468400,
+      "text": "Để con để con nó chạy đã. Chậm được."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 469000,
+      "endMs": 477200,
+      "text": "Xuống dưới. Cái cái Ủa Đang ở đâu? Ăn ngoài ngoài. Rồi cái đó đó cái đó đi. Vậy mới cái đầu tiên nè."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 478500,
+      "endMs": 479100,
+      "text": "Ờ chạy lâu ta."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 479600,
+      "endMs": 480000,
+      "text": "Chạy lâu lắm."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 481700,
+      "endMs": 482700,
+      "text": "À nhưng mà nó xong rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 483300,
+      "endMs": 485500,
+      "text": "Giờ đến build build xong nó chạy đủ cái mà."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 486800,
+      "endMs": 487300,
+      "text": "Build xong rồi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 490100,
+      "endMs": 492600,
+      "text": "À nè ra nè. Hợp lý rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 496100,
+      "endMs": 503800,
+      "text": "Sau cái này là cái này sau này cho cắm cái của Dũng. Build xong cái là tự lên luôn."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 504600,
+      "endMs": 505500,
+      "text": "Không vậy hơi nguy hiểm."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 506600,
+      "endMs": 517700,
+      "text": "Nguy hiểm. Nhưng mà nếu mà nếu mà có cái đó mấy cái đó cái đó thì phải em phải cho cái render trên này luôn để kiểm tra. Thì có mà có mà Khánh có làm cái đó á em. Nó có một cái để để render."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 517600,
+      "endMs": 520600,
+      "text": "Render nè. Rồi đợi ra cái là xíu là xem được trên đây."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 523500,
+      "endMs": 530500,
+      "text": "Là user sẽ xem được cái app đó hiện đang như nào luôn là là lúc nào đó đồng ý thì cũng tự Ủa nhưng mà nó có chọn"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 534600,
+      "endMs": 539400,
+      "text": "xem code được xem nếu mà nó có nó làm có giao diện."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 543100,
+      "endMs": 546500,
+      "text": "Này vô nó ngang với cái studio luôn rồi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 547100,
+      "endMs": 550500,
+      "text": "Studio. Rồi giao diện y hệt luôn rồi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 553400,
+      "endMs": 555100,
+      "text": "Cái có cái là tốc độ nó hơi lâu."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 555800,
+      "endMs": 556900,
+      "text": "Ừ nó hơi lâu. Xong cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 557600,
+      "endMs": 564500,
+      "text": "Nó chất lượng hơn thằng thằng thằng studio nhưng mà nó lại lâu hơn."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 566200,
+      "endMs": 567200,
+      "text": "Sao để em thử coi cái này."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 570100,
+      "endMs": 573400,
+      "text": "Nhưng mà anh phải đó nha tại vì cái nó đang chưa Em đang em đang"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 573600,
+      "endMs": 574800,
+      "text": "Anh mà anh mà."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 577000,
+      "endMs": 577200,
+      "text": "Đâu?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 580300,
+      "endMs": 580600,
+      "text": "Git hub"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 583400,
+      "endMs": 584500,
+      "text": "đúng không? Tại"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 586800,
+      "endMs": 590800,
+      "text": "Nó xong từng bước nó Ok. Rồi"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 591000,
+      "endMs": 595900,
+      "text": "Cái này Nếu mà làm cái Solid của cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 603200,
+      "endMs": 604400,
+      "text": "Cái này anh anh cho"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 609200,
+      "endMs": 609400,
+      "text": "để"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 611600,
+      "endMs": 617100,
+      "text": "Nó có một số skill cơ bản bên trong á. Thì đặt nó đặt giống như cái mấy cái á đúng không?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 619600,
+      "endMs": 621500,
+      "text": "Giờ nếu mà nó có sẵn ở dưới thì xài luôn."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 622400,
+      "endMs": 628400,
+      "text": "Đúng rồi. Chủ yếu là là cái mình đã có gì rồi là nó dùng theo là giống ví dụ anh Dũng có cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 630600,
+      "endMs": 632500,
+      "text": "Đây đây anh share cái cái cái màn hình của anh nha."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 634600,
+      "endMs": 634900,
+      "text": "Tắt không ta?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 636400,
+      "endMs": 638800,
+      "text": "Anh share Để vậy cũng được. Để song song mà."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 641000,
+      "endMs": 643100,
+      "text": "Chắc đợi cho nó chạy Cắm cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 645100,
+      "endMs": 648400,
+      "text": "Em soạn cái không thì Anh thấy chưa anh em? Thấy thấy chưa thấy chưa?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 649000,
+      "endMs": 649700,
+      "text": "Thấy rồi thấy rồi thấy rồi."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 651800,
+      "endMs": 653400,
+      "text": "Này anh add cái đúng không?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 654000,
+      "endMs": 654200,
+      "text": "Đúng rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 654100,
+      "endMs": 657100,
+      "text": "Giờ nó cái này hả? Khoanh lại được chưa?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 666000,
+      "endMs": 667000,
+      "text": "Rồi giờ nhấn gì nữa mấy đứa?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 667900,
+      "endMs": 668700,
+      "text": "Share lên ông share lên."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 669800,
+      "endMs": 670000,
+      "text": "Nhưng mà"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 672100,
+      "endMs": 673900,
+      "text": "Có cần hồi nãy anh kêu có cái gì mà."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 674900,
+      "endMs": 675500,
+      "text": "Trời ơi cái gì vậy?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 678600,
+      "endMs": 681300,
+      "text": "Ủa cái hình như cái mới sao á hả?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 681500,
+      "endMs": 685200,
+      "text": "Không cái team đó là cái cái bên Cái cái này là cái này là khác."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 686600,
+      "endMs": 687200,
+      "text": "Là cái đó đúng không?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 687700,
+      "endMs": 690300,
+      "text": "Nó sẽ cho anh chọn sau. Nó sẽ lên rồi nó cho anh chọn sau."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 694300,
+      "endMs": 703500,
+      "text": "Có nghĩa là thằng này là cơ chế nó khác. Nó nó lên trước xong nó xác định là các cái cái để làm. Thì mỗi thì em sẽ chọn thằng nào làm là là là phía sau."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 711400,
+      "endMs": 715600,
+      "text": "Nãy em cũng cũng thấy đúng không? Giờ nó xong rồi em mới chọn cái team."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 721300,
+      "endMs": 723800,
+      "text": "Ủa nhưng mà mình có biết là nó đang dùng cái của đồ gì không?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 728100,
+      "endMs": 732400,
+      "text": "Hình như là đang dùng bản cái bản mà em đang để default ở ở cái con"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 737700,
+      "endMs": 742400,
+      "text": "Đó giờ anh em chọn được không? Bên trên ấy xem cái plan là chọn phần gì rồi các thứ đó."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 744700,
+      "endMs": 746700,
+      "text": "Em thấy nó hơi màn hình nó hơi nhỏ ha."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 749500,
+      "endMs": 755000,
+      "text": "Ok. đúng không? Rồi Rồi anh em chọn bên phải luôn đi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 759800,
+      "endMs": 760400,
+      "text": "Cái sao vô không được?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 762900,
+      "endMs": 765600,
+      "text": "Ủa cái này Rồi để sau kéo to ra tí."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 769200,
+      "endMs": 769800,
+      "text": "Nhưng mà cái này sao?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 772100,
+      "endMs": 776000,
+      "text": "Giờ vô đây thì không cho. Hồi nãy khả năng bug quá."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 778100,
+      "endMs": 780600,
+      "text": "Đúng ra chỗ Này."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 789900,
+      "endMs": 792900,
+      "text": "Đúng ra cái chỗ mà đó là nó phải lấy được để nó"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 800000,
+      "endMs": 804000,
+      "text": "Ở đây nó đang nó đang dính bug cái gì rồi. Tại vì đang sửa mấy sửa rất nhiều mà chưa test lại."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 806000,
+      "endMs": 810500,
+      "text": "Thấy bug Sau đó nó chạy như nào? Hở? Cứ cho hả?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 816000,
+      "endMs": 816300,
+      "text": "À nó chọn"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 820000,
+      "endMs": 821200,
+      "text": "Đâu? Nó dùng"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 823700,
+      "endMs": 824000,
+      "text": "Ta chọn"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 826200,
+      "endMs": 826600,
+      "text": "Hình như nó tự"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 833200,
+      "endMs": 834400,
+      "text": "Code chắc giờ chết ngăng quá."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 836900,
+      "endMs": 837800,
+      "text": "Anh chạy được hai bước rồi mà."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 841100,
+      "endMs": 841500,
+      "text": "Ủa chậm lâu."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 863600,
+      "endMs": 865900,
+      "text": "Nó nhìn xịn xò quá Dũng. Giờ tối ưu co thôi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 868400,
+      "endMs": 872100,
+      "text": "Trời ơi cái sao nó cho trên nó mấy cái xịn."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 877200,
+      "endMs": 878000,
+      "text": "Giờ anh cho anh start cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 890000,
+      "endMs": 897800,
+      "text": "Ủa cái đây nữa kìa. nhanh hơn. Em làm cái từ đầu luôn mới lâu thôi. Tại vì build từ đầu là bao gồm cả mấy thư viện các thứ luôn."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 899600,
+      "endMs": 900600,
+      "text": "Hình như làm 3D nữa."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 901700,
+      "endMs": 906300,
+      "text": "Cái này em mấy cái này nãy nó kêu làm 3D rồi các thứ nữa mà. Em treo lên ngày mai có kết quả."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 909400,
+      "endMs": 913600,
+      "text": "Nó mất cái mấy cái cũ của em rồi. Long xóa gì? Em làm cái em đảo rồng thiệt xịn."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 914800,
+      "endMs": 920700,
+      "text": "Xóa đâu? Xóa. Hoặc là Mấy cái đảo rồng nó mất điều chỉnh nên nó nó nó nó mất hết."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 921100,
+      "endMs": 922700,
+      "text": "Làm cái em quá trời bay chỗ nào hết rồi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 924800,
+      "endMs": 925000,
+      "text": "Nó cũng"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 930400,
+      "endMs": 945300,
+      "text": "Cái em dựng thấy cái cái game đảo rồng ngay trên Để Khánh gửi á. Thấy thôi chứ chưa thấy ở trong nó là cái gì. Cho em cho nó một duy nhất luôn là nó tự đi search nó build lại cái đảo rồng á giống như"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 947700,
+      "endMs": 955400,
+      "text": "Làm ra cũng nói chung là giống nhưng mà mình chưa tối ưu cái làm nhưng mà cái game nó chơi chưa đã."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 957100,
+      "endMs": 957900,
+      "text": "Ủa mà cái này nó nó"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 960000,
+      "endMs": 961200,
+      "text": "Cái này nó trên code gì?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 962500,
+      "endMs": 966100,
+      "text": "Reset chứ anh. Reset chứ anh. Bên đây bên của em nè, nó build từng bước nè."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 966800,
+      "endMs": 976100,
+      "text": "Build trên thấy ra code trên rồi đấy chứ. Code trên nhưng mà sao anh thấy Anh mở cái 43 cái đó chẳng có gì cả."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 976500,
+      "endMs": 989300,
+      "text": "Không có. À thằng này nó có một cái cơ chế là thay vì nó sửa trên cái code trực tiếp của cái master của em nè, nó sẽ tách ra một cái riêng. Khi nó build xong á nó hiện lên của em và em thì nó mới mở vào một cái cái cái cái cái cuối cùng."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 994300,
+      "endMs": 995300,
+      "text": "Ủa Khánh xong ba cái rồi nè."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 995700,
+      "endMs": 996500,
+      "text": "Xong rồi rồi rồi đúng rồi."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 997700,
+      "endMs": 998500,
+      "text": "Để chờ anh khoảng phút."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1002000,
+      "endMs": 1002400,
+      "text": "Sao sao vậy ông?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1004200,
+      "endMs": 1004300,
+      "text": "Hả?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1011100,
+      "endMs": 1011500,
+      "text": "Ủa cái gì vậy?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1013200,
+      "endMs": 1013300,
+      "text": "Sao?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1014800,
+      "endMs": 1015600,
+      "text": "Nãy hỏi gì vậy?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1016800,
+      "endMs": 1017100,
+      "text": "Hỏi lại"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1019800,
+      "endMs": 1022400,
+      "text": "Đâu hỏi gì vậy? Có á có cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1025100,
+      "endMs": 1029900,
+      "text": "Tại vì hai mod em bật là một là luôn, hai là đừng hỏi lại tôi được không?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1031700,
+      "endMs": 1033300,
+      "text": "Thấy luôn á nhưng mà lúc mà anh chạy rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1034400,
+      "endMs": 1038500,
+      "text": "Ủa như cái này là nó đâu có xem được cho đến khi nó"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1040100,
+      "endMs": 1043600,
+      "text": "Nãy giờ chỉ xem cái Nhưng mà chắc là nó chưa hiện."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1046200,
+      "endMs": 1047000,
+      "text": "Không biết nó hỏi gì luôn đó anh."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1067100,
+      "endMs": 1068600,
+      "text": "Cái cái cái cái"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1073300,
+      "endMs": 1074800,
+      "text": "Sao? Khánh Khánh nói sao?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1076700,
+      "endMs": 1083400,
+      "text": "Ủa không thấy ông không thấy ông Tức là nó nó lên được ba bước rồi. Nó lên cái Ba bước này có rồi hả?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1084100,
+      "endMs": 1084400,
+      "text": "Ờ đúng rồi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1086500,
+      "endMs": 1088600,
+      "text": "Có làm gì làm gì á không biết. À xây nhà."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1092300,
+      "endMs": 1093300,
+      "text": "Làm cái game đi chùa đi mấy đứa."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1098200,
+      "endMs": 1098800,
+      "text": "Ờ ngon nè."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1101100,
+      "endMs": 1101200,
+      "text": "Đù."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1102900,
+      "endMs": 1103500,
+      "text": "Uy tín không anh Dũng?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1105200,
+      "endMs": 1106400,
+      "text": "Gì vậy? Xem kết quả nè."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1109200,
+      "endMs": 1110200,
+      "text": "À đang xây xây đường."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1110400,
+      "endMs": 1118600,
+      "text": "Giờ software thì nó dễ rồi đó nhưng mà vấn đề là anh em kiếm tiền thế nào. Cùng cơ chế nghĩ ra chưa? Cơ chế anh nghĩ ra rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1121000,
+      "endMs": 1122000,
+      "text": "Thì nghĩ bữa đó anh."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1124300,
+      "endMs": 1125700,
+      "text": "Có nghĩa là cái cái thằng kia là"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1127400,
+      "endMs": 1128700,
+      "text": "Mấy thằng kia được nhưng mà thằng này là"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1131500,
+      "endMs": 1150200,
+      "text": "Tại vì cái là mình nó chạy bao nhiêu là mình biết hết. Thì cứ một lần chạy thì ví dụ mình cứ gom từng cái bass rồi mình gửi cái nó lên trên server. Nó mua theo gói là được được bao nhiêu là là mình chặn lại. Tất nhiên nó fix được nhưng mà mấy thằng nào test ngon mới fix chứ còn mấy thằng thì không biết fix đâu."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1151600,
+      "endMs": 1156700,
+      "text": "Mà vậy phức tạp quá em thấy bán bán mà bán kiểu free pro là hợp lý nhất rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1157800,
+      "endMs": 1158000,
+      "text": "Đúng rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1161000,
+      "endMs": 1175100,
+      "text": "mình đâu mất gì đâu. Đang chừng 6 đô tháng là nhà thằng xài là 6.000 rồi kiểu vậy. Hoặc là 10 đô một tháng, 9 đô một tháng Nó dễ tiếp cận thì nó mới xài thì cơ bản là tụi nó phải xài cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1177500,
+      "endMs": 1179200,
+      "text": "của tụi nó rồi. Vậy thôi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1182400,
+      "endMs": 1183100,
+      "text": "Ừ mở"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1187100,
+      "endMs": 1190900,
+      "text": "Coding này chắc để bắt nó trả nhiều tiền á Cái này"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1194300,
+      "endMs": 1195900,
+      "text": "Nhưng mà trả tiền mới cho xài nha."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1197000,
+      "endMs": 1198100,
+      "text": "Nhiều vấn đề là"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1203100,
+      "endMs": 1208800,
+      "text": "Này phải cho đứa nào nó xài thử trước rồi nó đi nó nó Để mình có"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1214400,
+      "endMs": 1215600,
+      "text": "Phải cho user test luôn đi."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1217800,
+      "endMs": 1220500,
+      "text": "Cho mấy anh Sao cái của anh nó chạy lâu quá Long?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1221500,
+      "endMs": 1222700,
+      "text": "Giờ bước ba chưa xong nữa."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1223800,
+      "endMs": 1226600,
+      "text": "Ba chạy mà. Chạy lúc nào cũng lâu mà."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1230300,
+      "endMs": 1233300,
+      "text": "Ba bước của nó không biết bao nhiêu nữa. Khánh nó chạy bảy bước."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1239400,
+      "endMs": 1245900,
+      "text": "Cái mod mod mấy ngày giờ đang tối ưu cái mod Để load thêm lại cái mod"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1248200,
+      "endMs": 1250200,
+      "text": "Tại cái chỗ chọn team bên kia chắc mất rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1257500,
+      "endMs": 1260700,
+      "text": "Ủa Sỹ demo cái shop video coi. Sao nãy giờ anh không dùng cái giọng được."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1263100,
+      "endMs": 1267500,
+      "text": "Anh anh ở bên anh anh xem có cái nút cái thư viện mà."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1269600,
+      "endMs": 1274000,
+      "text": "Anh vô cái shop tìm vô coi cái Giờ để anh share màn hình nha."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1280200,
+      "endMs": 1280400,
+      "text": "Thấy chưa?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1283700,
+      "endMs": 1284000,
+      "text": "Em thấy không?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1284300,
+      "endMs": 1285000,
+      "text": "Này hả? Này hả?"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1285600,
+      "endMs": 1285700,
+      "text": "Là"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1290900,
+      "endMs": 1295100,
+      "text": "Đúng rồi hiện tại nó có một cái cái cái trên máy anh thôi à. Mà cái giọng nó dở lắm."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1295900,
+      "endMs": 1296100,
+      "text": "Giờ"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1296200,
+      "endMs": 1299700,
+      "text": "Cài thêm cái đó thì nó có nhiều giọng hơn."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1300400,
+      "endMs": 1301200,
+      "text": "Có 5 GB luôn."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1302900,
+      "endMs": 1306000,
+      "text": "Cái này ước lượng anh nhưng mà chắc đâu đấy khoảng 1 GB à."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1306800,
+      "endMs": 1319800,
+      "text": "Này Sỹ sửa mấy cái này thành tiếng tiếng tiếng Anh đi Sỹ. Mấy cái Dạ để em Xong xong rồi xong rồi cho cái mod là chọn cái là cái ngôn ngữ gì."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1322100,
+      "endMs": 1324600,
+      "text": "Ngôn ngữ có em có để ở dưới anh. Anh kéo xuống dưới là có."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1331300,
+      "endMs": 1335900,
+      "text": "Chắc là cho cái sổ cái cái cái cái cái sổ xuống. Sao không thấy cái màn hình?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1338000,
+      "endMs": 1339300,
+      "text": "Nãy anh cài cái kia thử được không?"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1347200,
+      "endMs": 1348700,
+      "text": "Nãy em cài em thấy nó chạy cũng nhanh á."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1352000,
+      "endMs": 1354700,
+      "text": "Đang cài. Nhanh nhanh chậm lên chắc cho mạng rồi."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1360600,
+      "endMs": 1369000,
+      "text": "Cái này nó có tính năng để anh ghi âm cái giọng của anh xong rồi nó sẽ chuyển thành cái cái giọng đọc trên video luôn."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1373800,
+      "endMs": 1375500,
+      "text": "Mà thấy như của mình xịn xò hết rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1377000,
+      "endMs": 1382000,
+      "text": "Nếu mà giao diện mới rồi sắp xếp đồ các thứ các thứ chỉnh chỉnh đã lắm."
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1383800,
+      "endMs": 1390000,
+      "text": "Rồi mấy đứa cứ bốn thôi. Đù thằng này nó viết nhưng mà Hơi ngược vậy. Thôi cũng được."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1391600,
+      "endMs": 1392600,
+      "text": "Ra được cái form chuẩn"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1396300,
+      "endMs": 1399400,
+      "text": "Nhưng mà đúng ra là mình phải được chọn cơ. Tại vì nãy không được chọn nên là"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1399400,
+      "endMs": 1405900,
+      "text": "Sửa đi sửa đi sửa sửa đi. Đúng rồi anh chỉ muốn là thì anh dùng thôi. Còn thì anh muốn dùng"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1423900,
+      "endMs": 1425900,
+      "text": "Đống này của thằng Khánh là chắc cũng dẹp sớm."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1431300,
+      "endMs": 1436900,
+      "text": "Để anh không là thu nhỏ nhỏ lại. Hoặc là ví dụ chỉ auto là hiện cái thôi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1439900,
+      "endMs": 1440400,
+      "text": "Auto để cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1443500,
+      "endMs": 1447400,
+      "text": "Sao anh? Cái cái này nè. Auto"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1452800,
+      "endMs": 1456800,
+      "text": "Đó đừng để kiểu kéo nó bị hơi nó bị nó bị delay á."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1458800,
+      "endMs": 1467800,
+      "text": "Gì vậy? Em mới hồi nãy giờ em mất mạng á. Nghe luôn. Auto là à mấy cái thằng đã Ừ để cái này Thì chắc là để hai tab."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1471400,
+      "endMs": 1475400,
+      "text": "Để xem mấy thằng coi nó Long Long cái chắc không biết cái logo cho nó đi chứ hả?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1480200,
+      "endMs": 1481800,
+      "text": "cái logo cho luôn."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1485600,
+      "endMs": 1486900,
+      "text": "Khánh suy nghĩ logo cho em Khánh."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1488000,
+      "endMs": 1488400,
+      "text": "Logo hả?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1488800,
+      "endMs": 1489900,
+      "text": "Ừ dạ để lát cho em"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1490700,
+      "endMs": 1501400,
+      "text": "Này đang thương hiệu luôn mà. Cái nhìn đẹp quá ha. Cái cái nhìn xấu quá. Cái thì đúng chán luôn á. Nó cứ nhạt nhạt kiểu gì á. Cái nó đẹp."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1504100,
+      "endMs": 1504800,
+      "text": "Mà cũng chẳng được"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1507700,
+      "endMs": 1510400,
+      "text": "Giống cái form màu tím của mình nó đi với màu màu màu đen nó đen"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1510300,
+      "endMs": 1510400,
+      "text": "Màu"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1510400,
+      "endMs": 1510500,
+      "text": "nó"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1510400,
+      "endMs": 1510700,
+      "text": "đen nó"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1512500,
+      "endMs": 1514500,
+      "text": "Cho cái màu màu hai màu nó đi chung với nhau đẹp hơn."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1515900,
+      "endMs": 1525000,
+      "text": "Để anh đẩy lên code lên hết đi để anh Anh Giờ giờ thì em sửa xong phần cuối. Sửa đi sáng mai anh được không?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1528500,
+      "endMs": 1548500,
+      "text": "Còn cái server mình có làm gì không anh Dũng? Giờ tạm thời Code này thôi. Server là có Ủa có anh Ủa server thì tụi em mới rồi mail được chứ? Gì vậy? Em tưởng là cái server ấy đang dùng kiểu server để thôi đó chứ. Đâu có dựng server có nó dựng được chứ."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1553400,
+      "endMs": 1553900,
+      "text": "Console luôn á."
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1554400,
+      "endMs": 1562800,
+      "text": "Console hả? Rồi bữa giờ tụi em xài Đâu? Tụi em chuyển tụi em lên trên"
+    },
+    {
+      "speaker": "Speaker 1",
+      "startMs": 1564800,
+      "endMs": 1565000,
+      "text": "là"
+    },
+    {
+      "speaker": "Speaker 2",
+      "startMs": 1570100,
+      "endMs": 1571200,
+      "text": "Sau này có thêm mấy ít được."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1572300,
+      "endMs": 1575600,
+      "text": "Em đang định làm thêm trong cái chỗ phía trên làm thêm"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1577800,
+      "endMs": 1582000,
+      "text": "Community thì mình Có nhiều thì thì nên ở bên cái trang"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1584900,
+      "endMs": 1616100,
+      "text": "Nhưng mà nếu mà ở thì làm sao user nó có thể kiểu xem các cái sản phẩm mà những thằng khác nó làm ra xong nó nó nó sẽ vào À à cái ý em là muốn build build một cái á hả? Kiểu không? xong rồi để có thể show lên À hiểu. À nhưng mà cái chợ đúng không? Dạ giống cái chợ mà mọi người làm giống ví dụ mọi người giống Khánh nó dùng cái nó build ra được cái game rồi, nó muốn thấy đẹp, nó muốn show lên cho người khác xem. Xong người khác vào có thể vào Anh nghĩ anh nghĩ là nên nên có một cái trang"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1618300,
+      "endMs": 1632500,
+      "text": "Nếu mà làm vậy thì nên có một cái trang marketplace riêng. Lúc mà thì nó sẽ về cái Mình cũng phải nghĩ cái cái cơ chế là để thì phải lưu ở đâu trong con Xong rồi lúc mà vô trong thì nó sẽ móc từ trong cái con"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1634700,
+      "endMs": 1640500,
+      "text": "Nhưng mà nên có một riêng chứ không nên để trong cái Dạ để nặng lắm. Dạ."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1650500,
+      "endMs": 1653200,
+      "text": "Chuyển ra mình làm sản phẩm này là quá cháy luôn."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1655900,
+      "endMs": 1658100,
+      "text": "Có khi là đang cái này gọi vốn luôn nha Dũng."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1660500,
+      "endMs": 1662900,
+      "text": "À à ta gọi vốn Là xin ra cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1673100,
+      "endMs": 1676200,
+      "text": "Thấy anh đang lag nãy màn hình lag lag xong đơ luôn rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1681300,
+      "endMs": 1684600,
+      "text": "Rồi của Khánh sắp xong đến nơi rồi Khánh. Sao xong rồi?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1690600,
+      "endMs": 1691200,
+      "text": "Mở ở nhà."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1697500,
+      "endMs": 1698100,
+      "text": "Accept luôn nha anh em."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1700700,
+      "endMs": 1703000,
+      "text": "Accept là là nó sẽ mở cái của em vào cái"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1707600,
+      "endMs": 1710900,
+      "text": "Đù máy coi nó xây nhà nè. Cũng hợp lý vậy ta."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1714100,
+      "endMs": 1714600,
+      "text": "Vãi thiệt."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1716700,
+      "endMs": 1721100,
+      "text": "VinaCraft hả? Biết luôn. Không cái á giống kiểu"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1724200,
+      "endMs": 1724600,
+      "text": "Nhà ta."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1727400,
+      "endMs": 1740600,
+      "text": "Thôi Sỹ cái chùa đi xong publish cái game chùa ra cho gắn vô. Kêu tụi em đóng đi chắc chắn là 100% chùa xong anh em đi sau cắn 10%. Cắn mấy khi mà giàu. Anh xong công đức mới hết."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1744100,
+      "endMs": 1745800,
+      "text": "Đúng rồi đặt nhà sao nó có gì đi đi kìa."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1756100,
+      "endMs": 1757300,
+      "text": "Ủa Long sao anh thấy nó build xong rồi"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1760400,
+      "endMs": 1762400,
+      "text": "Khánh hả? Không không khác gì cả."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1764600,
+      "endMs": 1768000,
+      "text": "Anh cũng không biết. Sao nó hỏi sao nó thực sự gì không?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1783700,
+      "endMs": 1788000,
+      "text": "Cũng xong hết rồi nè. Không không thấy nó Anh thấy nó cũng thế."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1792600,
+      "endMs": 1797000,
+      "text": "Anh Sỹ lừa quá à Long, lừa quá ta. Ủa mà sao có một file vậy? Ủa sao ảo vậy?"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1805000,
+      "endMs": 1809000,
+      "text": "Phải có khi là có khi là cái cái cái cái cái gì cái nó chưa mở vào á em."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1812500,
+      "endMs": 1813100,
+      "text": "Hết rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1816400,
+      "endMs": 1817800,
+      "text": "Vậy ít lắm, chèn có mấy dòng à."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1823300,
+      "endMs": 1824200,
+      "text": "Em không bán kể luôn á."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1829000,
+      "endMs": 1831800,
+      "text": "Hồi xưa em dùng cái đó cho con nó xịn xò lắm mà."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1837000,
+      "endMs": 1843700,
+      "text": "của em để để để mai em chạy con nó cho. nó hình đẹp xong rồi em làm hiệu ứng 3D cho."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1846200,
+      "endMs": 1848100,
+      "text": "Khánh em dựng hơi xấu."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1853000,
+      "endMs": 1854200,
+      "text": "Nó nhìn nhìn không thấy khác biệt"
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1856500,
+      "endMs": 1857900,
+      "text": "Không chắc cũng khác không đáng kể."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1860000,
+      "endMs": 1865900,
+      "text": "Hoặc là cái đó nó đến từ tại vì cái hơi là kiểu là phải làm gì đó. Nó chỉ đi theo cái thôi, không có."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1869600,
+      "endMs": 1872200,
+      "text": "Tại vì em yêu cầu cụ thể nó sẽ làm gì đó gì đó rồi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1884600,
+      "endMs": 1885400,
+      "text": "Nghỉ xíu đi anh em ơi."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1890500,
+      "endMs": 1891000,
+      "text": "Nay có chấp."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1898000,
+      "endMs": 1900300,
+      "text": "Đợi cái của anh Khánh mai demo nha Khánh."
+    },
+    {
+      "speaker": "Speaker 3",
+      "startMs": 1912300,
+      "endMs": 1913700,
+      "text": "Rồi ok bye chú."
+    }
+  ],
+  "summary": null,
+  "schemaVersion": 3,
+  "processedAt": "2026-11-05T18:49:49.860Z",
+  "summaryError": "Gemini request failed (503). This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+  "audioDurationMs": 1920128
+}
