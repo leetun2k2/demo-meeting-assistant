@@ -28,9 +28,9 @@ Validator chỉ đảm bảo cấu trúc và quy tắc an toàn nêu trên. Tên
 
 ## 2. Hiển thị thống nhất, giữ định danh
 
-Dùng `lib/meeting/display.ts` làm nguồn chung: tên đã resolve; nếu trùng tên trong bảng thì `Khánh (Person 1)`/`Khánh (Person 2)`; unresolved → Person N. So sánh tên trùng sau trim, chuẩn hóa Unicode và bỏ khác biệt hoa/thường; không bỏ dấu hoặc suy đoán alias. Tên assignee tự do không được đổi thành speaker chỉ vì trùng tên.
+Dùng `lib/meeting/display.ts` làm nguồn chung: tên đã resolve; nếu trùng tên trong bảng thì `Alex (Person 1)`/`Alex (Person 2)`; unresolved → Person N. So sánh tên trùng sau trim, chuẩn hóa Unicode và bỏ khác biệt hoa/thường; không bỏ dấu hoặc suy đoán alias. Tên assignee tự do không được đổi thành speaker chỉ vì trùng tên.
 
-Chuẩn hóa các tham chiếu Speaker N và Person N có raw key tương ứng trong prose về cùng tên hiển thị bằng một lượt thay thế; tránh thay một phần số hoặc chạy thay lặp trên chính chuỗi vừa tạo. Khi chuẩn hóa lại dữ liệu đã hiển thị, bảo vệ các chuỗi tên có hậu tố phân biệt hiện hành như `Khánh (Person 1)` trước khi thay token rời, để không tạo hậu tố lồng nhau. Không thay từ riêng lẻ tên người thứ ba. Không sửa `TranscriptSegment.text`, `speaker`, startMs/endMs. Bản ghi cũ đã viết tên sai trong prose không tự chữa bằng thay chuỗi.
+Chuẩn hóa các tham chiếu Speaker N và Person N có raw key tương ứng trong prose về cùng tên hiển thị bằng một lượt thay thế; tránh thay một phần số hoặc chạy thay lặp trên chính chuỗi vừa tạo. Khi chuẩn hóa lại dữ liệu đã hiển thị, bảo vệ các chuỗi tên có hậu tố phân biệt hiện hành như `Alex (Person 1)` trước khi thay token rời, để không tạo hậu tố lồng nhau. Không thay từ riêng lẻ tên người thứ ba. Không sửa `TranscriptSegment.text`, `speaker`, startMs/endMs. Bản ghi cũ đã viết tên sai trong prose không tự chữa bằng thay chuỗi.
 
 Áp dụng helper cho transcript, filter label (value vẫn raw key), speaking breakdown, option assignee, task label/avatar, copy và Markdown kể cả summary null. Không mở rộng các section Markdown chỉ để đồng bộ feature không liên quan. JSON/Copy JSON vẫn raw và có speakerNames khi summary tồn tại. Ask AI tiếp tục dùng normalizer hiện có; không mở API hay thêm danh tính vào request chat trong v4.
 

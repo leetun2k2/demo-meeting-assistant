@@ -627,23 +627,32 @@ export default function MeetingWorkspace() {
       {/* Top Navbar */}
       <nav className="sticky top-0 z-30 border-b border-indigo-100/70 bg-white/80 backdrop-blur-md px-6 py-3.5">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
               </svg>
             </div>
             <div>
-              <span className="text-base font-bold tracking-tight text-zinc-900">
+              <span className="text-base font-bold tracking-tight text-zinc-900 group-hover:text-indigo-600 transition-colors">
                 Nexus<span className="text-indigo-600 font-extrabold">AI</span> Meeting Intelligence
               </span>
               <span className="ml-2 hidden rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60 sm:inline-block">
                 v2.5 PRO
               </span>
             </div>
-          </div>
+          </Link>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="text-xs font-semibold text-zinc-600 hover:text-indigo-600 px-2 py-1 rounded-lg hover:bg-zinc-100/70 transition-colors hidden sm:inline-block"
+            >
+              Overview
+            </Link>
+            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200/60 hidden sm:inline-block">
+              Input
+            </span>
             <Link
               href="/results"
               className="group flex items-center gap-1.5 rounded-xl border border-indigo-200/80 bg-white/90 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-50/60 hover:border-indigo-300 transition-all"
@@ -1075,18 +1084,18 @@ export default function MeetingWorkspace() {
                   <button
                     type="button"
                     disabled={processing}
-                    onClick={() => appendNoteTemplate("Speaker 1 is Khánh")}
+                    onClick={() => appendNoteTemplate("Speaker 1 is Alex")}
                     className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-medium text-zinc-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-colors"
                   >
-                    + Speaker 1 is Khánh
+                    + Speaker 1 is Alex
                   </button>
                   <button
                     type="button"
                     disabled={processing}
-                    onClick={() => appendNoteTemplate("Speaker 2 is Long")}
+                    onClick={() => appendNoteTemplate("Speaker 2 is Bob")}
                     className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-medium text-zinc-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-colors"
                   >
-                    + Speaker 2 is Long
+                    + Speaker 2 is Bob
                   </button>
                   <button
                     type="button"

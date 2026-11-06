@@ -58,10 +58,10 @@ Không dùng file mẫu làm bảng đáp án danh tính. Trước nghiệm thu,
 
 | Tình huống | Hành vi yêu cầu |
 |---|---|
-| Tự giới thiệu rõ, ví dụ “Mình là Khánh” | Có thể gán Khánh cho speaker nói câu đó nếu không có bằng chứng mâu thuẫn |
+| Tự giới thiệu rõ, ví dụ “Mình là Alex” | Có thể gán Alex cho speaker nói câu đó nếu không có bằng chứng mâu thuẫn |
 | Gọi đích danh và có câu đáp xác nhận rõ | Có thể gán cho speaker đáp lời khi ngữ cảnh xác định duy nhất người được gọi |
-| Chỉ gọi tên, ví dụ “Long demo luôn đi” | Chưa đủ để gán Long cho người nói câu đó hoặc người nói ngay sau |
-| Nhắc người thứ ba, ví dụ “Khánh có làm cái đó” | Không gán Khánh cho speaker đang nói chỉ từ câu này |
+| Chỉ gọi tên, ví dụ “Bob demo luôn đi” | Chưa đủ để gán Bob cho người nói câu đó hoặc người nói ngay sau |
+| Nhắc người thứ ba, ví dụ “Alex có làm cái đó” | Không gán Alex cho speaker đang nói chỉ từ câu này |
 | Có nhiều người đáp, nói chồng hoặc chuyển chủ đề | Giữ chưa xác định nếu không phân biệt được người đáp |
 | Bằng chứng mâu thuẫn hoặc một nhãn có dấu hiệu chứa nhiều người | Không ép một tên đại diện cho cả nhãn; giữ nhãn trung lập |
 | Không có tên | Giữ nhãn trung lập; không tạo tên mẫu |
@@ -140,7 +140,7 @@ Phần này bổ sung FR-01–04; quy tắc nguồn danh tính và regenerate b�
 ### FR-05 — Một nội dung notes, hai điểm chỉnh sửa
 
 - Có textarea tùy chọn tại màn hình record/upload trước Process Meeting, và tại đầu Results, trước phần summary. Hai vị trí chỉnh cùng notes của cuộc họp, không phải hai nguồn độc lập. Không cần notes để xử lý audio.
-- Placeholder gợi ý bối cảnh, thuật ngữ và đính chính: “Speaker 1 là Khánh; Speaker 2 là Long; Nexus là tên dự án”. Chỉ gán speaker khi user nêu liên kết rõ; “Người tham gia: Khánh, Long” không đủ xác định ai nói.
+- Placeholder gợi ý bối cảnh, thuật ngữ và đính chính: “Speaker 1 là Alex; Speaker 2 là Bob; Nexus là tên dự án”. Chỉ gán speaker khi user nêu liên kết rõ; “Người tham gia: Alex, Bob” không đủ xác định ai nói.
 - Notes được chuyển cùng kết quả khi điều hướng, lưu bằng cơ chế cache best effort hiện có và có trong JSON export. Kết quả schema 3 cũ thiếu notes mở với chuỗi rỗng. Không dùng lại notes cuộc họp trước khi bắt đầu cuộc họp mới.
 - Giới hạn đề xuất cho demo: 10.000 ký tự notes; vượt giới hạn hoặc sai kiểu phải báo rõ và không gọi AI, không cắt âm thầm. Ghi notes không tự kích hoạt inference.
 
@@ -163,7 +163,7 @@ Phần này bổ sung FR-01–04; quy tắc nguồn danh tính và regenerate b�
 | ID | Ca kiểm tra | Kết quả đạt |
 |---|---|---|
 | AC-11 | Nhập notes trước Process; mở Results rồi reload | Notes giống input, được dùng ở lượt summary đầu, reload giữ khi cache ghi thành công; bỏ trống vẫn chạy như cũ |
-| AC-12 | Transcript mơ hồ; notes ghi rõ Speaker 1 là Khánh | Tên hiển thị và summary dùng Khánh nhất quán; danh sách tên không có liên kết không được gán tùy ý; raw transcript giữ nguyên |
+| AC-12 | Transcript mơ hồ; notes ghi rõ Speaker 1 là Alex | Tên hiển thị và summary dùng Alex nhất quán; danh sách tên không có liên kết không được gán tùy ý; raw transcript giữ nguyên |
 | AC-13 | Summary completed sai; sửa notes rồi Regenerate | Hiện trạng chưa áp dụng trước khi bấm; đúng một summary request với notes mới; không upload/phiên âm; summary và bảng tên thay cùng lúc |
 | AC-14 | Regenerate lỗi rồi retry thành công | Summary/bảng tên cũ và notes mới còn nguyên khi lỗi; retry dùng notes mới; thành công cập nhật kết quả và trạng thái áp dụng |
 | AC-15 | Notes thêm bối cảnh, chứa chỉ dẫn độc hại hoặc mâu thuẫn | Phân biệt nguồn user; không bịa đồng thuận/timestamp; không thực thi chỉ dẫn; mapping mâu thuẫn để null |

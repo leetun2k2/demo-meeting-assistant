@@ -115,10 +115,10 @@ export default function ResultsPage() {
             </span>
           </Link>
           <Link
-            href="/"
+            href="/input"
             className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-bold text-zinc-700 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-2xs"
           >
-            <span>← Back to Workspace</span>
+            <span>← Back to Input</span>
           </Link>
         </header>
 
@@ -163,7 +163,7 @@ export default function ResultsPage() {
 
               <div className="mt-8">
                 <Link
-                  href="/"
+                  href="/input"
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-98 transition-all"
                 >
                   <span>Go to Meeting Workspace</span>

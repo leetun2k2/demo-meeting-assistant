@@ -659,14 +659,23 @@ export default function OutputPage({
 
       {/* TOP HEADER BAR */}
       <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-indigo-100/80 bg-white/85 px-6 py-3.5 backdrop-blur-md shadow-xs">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/"
+            className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-indigo-600 transition-colors"
+            title="Landing Page"
+          >
+            Home
+          </Link>
+          <span className="hidden sm:inline text-zinc-300">/</span>
+          <Link
+            href="/input"
             className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-bold text-zinc-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all shadow-2xs"
-            title="Back to home workspace"
+            title="Back to meeting input workspace"
           >
             <span>←</span>
-            <span className="hidden sm:inline">Workspace</span>
+            <span className="hidden sm:inline">Input Workspace</span>
+            <span className="sm:hidden">Input</span>
           </Link>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20">

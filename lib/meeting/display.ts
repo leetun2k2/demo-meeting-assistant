@@ -15,7 +15,7 @@ function normalizeNameForComparison(name: string): string {
 // name from a manual edit) passes through unchanged.
 //
 // When two or more speakers genuinely resolve to the same name, each is shown suffixed with its
-// own speaker number (e.g. "Khánh (Person 1)", "Khánh (Person 2)") so the UI never silently
+// own speaker number (e.g. "Alex (Person 1)", "Alex (Person 2)") so the UI never silently
 // collapses two different real people into one displayed identity (PRD v4 FR-01 rule 4).
 export function displaySpeaker(label: string, speakerNames: SpeakerNameResolution[]): string {
   const match = SPEAKER_LABEL_RE.exec(label);
@@ -30,7 +30,7 @@ export function displaySpeaker(label: string, speakerNames: SpeakerNameResolutio
 }
 
 // Matches a bare "Speaker N"/"Person N" mention, or an existing "(Person N)" disambiguation
-// suffix already attached to a resolved name (e.g. "Khánh (Person 1)"). The suffix form is
+// suffix already attached to a resolved name (e.g. "Alex (Person 1)"). The suffix form is
 // captured so it can be left untouched instead of being re-processed as a second bare mention,
 // which would otherwise nest a duplicate suffix onto already-normalized text.
 const SPEAKER_MENTION_RE = /\((?:Speaker|Person) \d+\)|\b(?:Speaker|Person) \d+\b/g;
